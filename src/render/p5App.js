@@ -18,6 +18,12 @@ function drawLevelGoal(p, app) {
   if (level.winCondition.type === "runner_reaches_cell") {
     targetX = level.winCondition.targetCell.x;
     targetY = level.winCondition.targetCell.y;
+  } else if (level.winCondition.type === "runner_reaches_cell_after_action") {
+    targetX = level.winCondition.targetCell.x;
+    targetY = level.winCondition.targetCell.y;
+  } else if (level.winCondition.type === "barrier_exists_at_cell") {
+    targetX = level.winCondition.targetCell.x;
+    targetY = level.winCondition.targetCell.y;
   } else if (level.winCondition.type === "runner_reaches_enemy_flag") {
     const actor = app.state.allRunners.find((runner) => runner.id === level.winCondition.runnerId);
     const enemyTeamId = actor?.team === 1 ? 2 : 1;
@@ -25,6 +31,19 @@ function drawLevelGoal(p, app) {
     if (enemyFlag) {
       targetX = enemyFlag.gridX;
       targetY = enemyFlag.gridY;
+    }
+  } else if (level.winCondition.type === "team_scores_point") {
+    const actor = app.state.allRunners.find((runner) => runner.id === level.winCondition.runnerId || runner.id === "runner_1_AI_AllyP1");
+    if (actor?.hasEnemyFlag) {
+      targetX = 0;
+      targetY = actor.gridY;
+    } else {
+      const enemyTeamId = actor?.team === 1 ? 2 : 1;
+      const enemyFlag = app.state.gameFlags[enemyTeamId];
+      if (enemyFlag) {
+        targetX = enemyFlag.gridX;
+        targetY = enemyFlag.gridY;
+      }
     }
   }
 

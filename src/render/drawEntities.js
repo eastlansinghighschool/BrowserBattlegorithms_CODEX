@@ -1,4 +1,4 @@
-import { CELL_SIZE, POINTS_TO_WIN } from "../config/constants.js";
+import { CELL_SIZE, GAME_VIEW_MODES, POINTS_TO_WIN } from "../config/constants.js";
 
 export function drawFlags(p, state) {
   for (const teamId of Object.keys(state.gameFlags)) {
@@ -36,7 +36,11 @@ export function drawRunners(p, state) {
 }
 
 export function drawGameOverOverlay(p, state) {
-  if (state.currentTurnState !== "GAME_OVER" || state.mainGameState === "SETUP") {
+  if (
+    state.currentTurnState !== "GAME_OVER" ||
+    state.mainGameState === "SETUP" ||
+    state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS
+  ) {
     return;
   }
   p.fill(0, 0, 0, 180);
@@ -45,7 +49,7 @@ export function drawGameOverOverlay(p, state) {
   p.textAlign(p.CENTER, p.CENTER);
   p.textSize(32);
   const winner = state.teamScores[1] >= POINTS_TO_WIN ? 1 : (state.teamScores[2] >= POINTS_TO_WIN ? 2 : 0);
-  p.text(winner ? `Team ${winner} Wins!` : "GAME OVER", p.width / 2, p.height / 2 - 20);
+  p.text(winner ? `Team ${winner} Wins!` : "Match Complete", p.width / 2, p.height / 2 - 20);
   p.textSize(16);
-  p.text("Click 'Reset' to play again.", p.width / 2, p.height / 2 + 20);
+  p.text("Press Reset Game to try another match.", p.width / 2, p.height / 2 + 20);
 }

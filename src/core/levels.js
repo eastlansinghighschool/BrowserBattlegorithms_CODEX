@@ -48,11 +48,55 @@ function applyRunnerOverrides(state, setupOverrides) {
     if (override.isFrozen) {
       runner.setFrozen(override.frozenTurnsRemaining || 1);
     }
+    if (override.playDirection !== undefined) {
+      runner.playDirection = override.playDirection;
+    }
+    if (override.isNPC !== undefined) {
+      runner.isNPC = override.isNPC;
+    }
+    if (override.isHumanControlled !== undefined) {
+      runner.isHumanControlled = override.isHumanControlled;
+    }
     if (override.canJump !== undefined) {
       runner.canJump = override.canJump;
     }
     if (override.canPlaceBarrier !== undefined) {
       runner.canPlaceBarrier = override.canPlaceBarrier;
+    }
+    if (override.hasEnemyFlag !== undefined) {
+      runner.hasEnemyFlag = override.hasEnemyFlag;
+    }
+  }
+}
+
+function applyFlagOverrides(state, setupOverrides) {
+  const flagOverrides = setupOverrides?.flagOverrides || {};
+  for (const [teamId, override] of Object.entries(flagOverrides)) {
+    const flag = state.gameFlags[teamId];
+    if (!flag || !override) {
+      continue;
+    }
+    if (override.gridX !== undefined) {
+      flag.gridX = override.gridX;
+      flag.initialGridX = override.gridX;
+    }
+    if (override.gridY !== undefined) {
+      flag.gridY = override.gridY;
+      flag.initialGridY = override.gridY;
+    }
+    if (override.isAtBase !== undefined) {
+      flag.isAtBase = override.isAtBase;
+    }
+    if (override.carriedByRunnerId !== undefined) {
+      flag.carriedByRunnerId = override.carriedByRunnerId;
+    }
+    if (flag.carriedByRunnerId) {
+      const carrier = state.allRunners.find((runner) => runner.id === flag.carriedByRunnerId);
+      if (carrier) {
+        carrier.hasEnemyFlag = true;
+        flag.gridX = carrier.gridX;
+        flag.gridY = carrier.gridY;
+      }
     }
   }
 }
@@ -64,6 +108,8 @@ function applyLevelToState(state, level) {
   state.pointsToWin = level.setupOverrides?.pointsToWin || 1;
   state.autoStayHumanRunnerIds = level.setupOverrides?.autoStayHumanRunnerIds || [];
   state.displayRunnerOverrides = level.setupOverrides?.runnerOverrides || null;
+  state.displayFlagOverrides = level.setupOverrides?.flagOverrides || null;
+  state.setupBarriers = level.setupOverrides?.barriers || [];
 }
 
 export function initializeLevelState(app) {
@@ -100,6 +146,9 @@ export function getLevelStateSnapshot(app) {
     lastLevelResultReason: state.lastLevelResultReason,
     levelProgress: { ...state.levelProgress },
     humanTurnBehavior: state.humanTurnBehavior,
+    currentSensorObjectTypes: [...(state.currentSensorObjectTypes || [])],
+    currentSensorRelationTypes: [...(state.currentSensorRelationTypes || [])],
+    currentMoveTowardTargetTypes: [...(state.currentMoveTowardTargetTypes || [])],
     activeTutorial: state.activeTutorial ? {
       key: state.activeTutorial.key,
       currentIndex: state.activeTutorial.currentIndex
@@ -160,6 +209,7 @@ export function startLevel(app, levelId = app.state.currentLevelId) {
   state.humanTurnBehavior = level.humanTurnBehavior || HUMAN_TURN_BEHAVIORS.AUTO_SKIP;
   initializeMatch(app);
   applyRunnerOverrides(state, level.setupOverrides);
+  applyFlagOverrides(state, level.setupOverrides);
   state.mainGameState = MAIN_GAME_STATES.RUNNING;
   if (typeof app.hooks.onLevelStarted === "function") {
     app.hooks.onLevelStarted(level);
@@ -225,7 +275,7 @@ export function evaluateLevelProgress(app) {
   if (state.currentModeView !== GAME_VIEW_MODES.GUIDED_LEVELS) {
     return null;
   }
-  if (state.mainGameState !== MAIN_GAME_STATES.RUNNING) {
+  if (state.mainGameState !== MAIN_GAME_STATES.RUNNING && state.mainGameState !== MAIN_GAME_STATES.GAME_OVER) {
     return null;
   }
 
@@ -234,8 +284,10 @@ export function evaluateLevelProgress(app) {
     return null;
   }
 
-  const actor = state.allRunners.find((runner) => runner.id === level.winCondition.runnerId);
-  if (!actor) {
+  const actor = level.winCondition.runnerId
+    ? state.allRunners.find((runner) => runner.id === level.winCondition.runnerId)
+    : null;
+  if (level.winCondition.runnerId && !actor) {
     return null;
   }
 
@@ -246,6 +298,20 @@ export function evaluateLevelProgress(app) {
     const enemyTeamId = actor.team === 1 ? 2 : 1;
     const enemyFlag = state.gameFlags[enemyTeamId];
     passed = actor.hasEnemyFlag || (enemyFlag && actor.gridX === enemyFlag.gridX && actor.gridY === enemyFlag.gridY);
+  } else if (level.winCondition.type === "team_scores_point") {
+    passed = (state.teamScores[level.winCondition.teamId] || 0) > 0;
+  } else if (level.winCondition.type === "runner_reaches_cell_after_action") {
+    const actionHistory = state.runnerActionHistory?.[level.winCondition.runnerId] || [];
+    const requiredActionTypes = level.winCondition.actionTypes || [];
+    passed = actor.gridX === level.winCondition.targetCell.x &&
+      actor.gridY === level.winCondition.targetCell.y &&
+      requiredActionTypes.some((actionType) => actionHistory.includes(actionType));
+  } else if (level.winCondition.type === "barrier_exists_at_cell") {
+    passed = state.barriers.some(
+      (barrier) =>
+        barrier.gridX === level.winCondition.targetCell.x &&
+        barrier.gridY === level.winCondition.targetCell.y
+    );
   }
 
   if (passed) {

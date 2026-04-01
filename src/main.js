@@ -1,7 +1,11 @@
 import { createApp } from "./core/state.js";
 import { initializeDisplayState } from "./core/setup.js";
 import {
+  getAvailableToolboxBlockLabels,
   getAvailableToolboxBlockTypes,
+  getMoveTowardTargetLabels,
+  getSensorObjectLabels,
+  getSensorRelationLabels,
   initBlockly,
   loadWorkspaceXml,
   setBlocklyEditable,
@@ -21,6 +25,8 @@ import {
   startLevel
 } from "./core/levels.js";
 import { bindLevelPanel, renderLevelPanel } from "./ui/levels.js";
+import { getAIAllyAction } from "./ai/blockly/interpreter.js";
+import { processTurnActions } from "./core/turnEngine.js";
 import {
   bindTutorialOverlay,
   closeTutorial,
@@ -98,7 +104,12 @@ window.__BBA_TEST_HOOKS__ = {
   getLevelState: () => getLevelStateSnapshot(app),
   getBlocklyWorkspace: () => app.blocklyWorkspace,
   getAvailableToolboxBlockTypes: () => getAvailableToolboxBlockTypes(app),
+  getAvailableToolboxBlockLabels: () => getAvailableToolboxBlockLabels(app),
+  getMoveTowardTargetLabels: () => getMoveTowardTargetLabels(),
+  getSensorObjectLabels: () => getSensorObjectLabels(),
+  getSensorRelationLabels: () => getSensorRelationLabels(),
   loadWorkspaceXml: (xmlText) => loadWorkspaceXml(app, xmlText),
+  getAIAllyAction: () => getAIAllyAction(app),
   startCurrentLevelTutorial: (force = false) => {
     startCurrentLevelTutorial(app, force);
     app.syncUi();
@@ -117,6 +128,11 @@ window.__BBA_TEST_HOOKS__ = {
     const result = evaluateLevelProgress(app);
     app.syncUi();
     return result;
+  },
+  processTurn: () => {
+    processTurnActions(app, app.p5Instance);
+    app.syncUi();
+    return app.state;
   },
   app
 };

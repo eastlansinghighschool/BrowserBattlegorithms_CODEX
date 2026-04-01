@@ -10,6 +10,8 @@ export const BASE_ANIMATION_SPEED = 0.1;
 export const DEFAULT_ANIMATION_SPEED_FACTOR = 1.0;
 export const POINTS_TO_WIN = 2;
 export const FROZEN_DURATION_TURNS = 3;
+export const AREA_FREEZE_DURATION_TURNS = 2;
+export const AREA_FREEZE_RADIUS = 2;
 
 export const NPC_BEHAVIORS = {
   SIMPLE_TARGET: "SIMPLE_TARGET",
@@ -25,9 +27,43 @@ export const AI_ACTION_TYPES = {
   MOVE_BACKWARD: "MOVE_BACKWARD",
   MOVE_UP_SCREEN: "MOVE_UP_SCREEN",
   MOVE_DOWN_SCREEN: "MOVE_DOWN_SCREEN",
+  MOVE_RANDOMLY: "MOVE_RANDOMLY",
+  MOVE_TOWARD: "MOVE_TOWARD",
   STAY_STILL: "STAY_STILL",
   JUMP_FORWARD: "JUMP_FORWARD",
-  PLACE_BARRIER_FORWARD: "PLACE_BARRIER_FORWARD"
+  PLACE_BARRIER_FORWARD: "PLACE_BARRIER_FORWARD",
+  FREEZE_OPPONENTS: "FREEZE_OPPONENTS"
+};
+
+export const MOVE_TOWARD_TARGETS = {
+  ENEMY_FLAG: "ENEMY_FLAG",
+  MY_BASE: "MY_BASE",
+  HUMAN_RUNNER: "HUMAN_RUNNER",
+  CLOSEST_ENEMY: "CLOSEST_ENEMY"
+};
+
+export const SENSOR_OBJECT_TYPES = {
+  BARRIER: "BARRIER",
+  EDGE_OR_WALL: "EDGE_OR_WALL",
+  ENEMY_RUNNER: "ENEMY_RUNNER",
+  ENEMY_FLAG: "ENEMY_FLAG",
+  HUMAN_RUNNER: "HUMAN_RUNNER"
+};
+
+export const SENSOR_RELATION_TYPES = {
+  DIRECTLY_IN_FRONT: "DIRECTLY_IN_FRONT",
+  DIRECTLY_BEHIND: "DIRECTLY_BEHIND",
+  DIRECTLY_ABOVE: "DIRECTLY_ABOVE",
+  DIRECTLY_BELOW: "DIRECTLY_BELOW",
+  ANYWHERE_FORWARD: "ANYWHERE_FORWARD",
+  ANYWHERE_BEHIND: "ANYWHERE_BEHIND",
+  ANYWHERE_ABOVE: "ANYWHERE_ABOVE",
+  ANYWHERE_BELOW: "ANYWHERE_BELOW",
+  WITHIN_2: "WITHIN_2",
+  WITHIN_3: "WITHIN_3",
+  WITHIN_4: "WITHIN_4",
+  WITHIN_5: "WITHIN_5",
+  WITHIN_6: "WITHIN_6"
 };
 
 export const TURN_STATES = {
@@ -70,13 +106,35 @@ export const HUMAN_TURN_BEHAVIORS = {
 
 export const BLOCK_TYPES = {
   ON_EACH_TURN: "battlegorithms_on_each_turn",
+  IF_SENSOR_MATCHES: "battlegorithms_if_sensor_matches",
+  IF_SENSOR_MATCHES_ELSE: "battlegorithms_if_sensor_matches_else",
+  IF_BARRIER_IN_FRONT: "battlegorithms_if_barrier_in_front",
+  IF_BARRIER_IN_FRONT_ELSE: "battlegorithms_if_barrier_in_front_else",
+  IF_ENEMY_IN_FRONT: "battlegorithms_if_enemy_in_front",
+  IF_HAVE_ENEMY_FLAG: "battlegorithms_if_have_enemy_flag",
+  IF_HAVE_ENEMY_FLAG_ELSE: "battlegorithms_if_have_enemy_flag_else",
+  IF_CAN_JUMP: "battlegorithms_if_can_jump",
+  IF_CAN_JUMP_ELSE: "battlegorithms_if_can_jump_else",
+  IF_CAN_PLACE_BARRIER: "battlegorithms_if_can_place_barrier",
+  IF_CAN_PLACE_BARRIER_ELSE: "battlegorithms_if_can_place_barrier_else",
+  IF_AREA_FREEZE_READY: "battlegorithms_if_area_freeze_ready",
+  IF_AREA_FREEZE_READY_ELSE: "battlegorithms_if_area_freeze_ready_else",
+  IF_TEAMMATE_HAS_FLAG: "battlegorithms_if_teammate_has_flag",
+  IF_TEAMMATE_HAS_FLAG_ELSE: "battlegorithms_if_teammate_has_flag_else",
+  IF_ON_MY_SIDE: "battlegorithms_if_on_my_side",
+  IF_ON_MY_SIDE_ELSE: "battlegorithms_if_on_my_side_else",
+  IF_ON_ENEMY_SIDE: "battlegorithms_if_on_enemy_side",
+  IF_ON_ENEMY_SIDE_ELSE: "battlegorithms_if_on_enemy_side_else",
+  MOVE_TOWARD: "battlegorithms_move_toward",
   MOVE_FORWARD: "battlegorithms_move_forward",
   MOVE_BACKWARD: "battlegorithms_move_backward",
   MOVE_UP_SCREEN: "battlegorithms_move_up_screen",
   MOVE_DOWN_SCREEN: "battlegorithms_move_down_screen",
+  MOVE_RANDOMLY: "battlegorithms_move_randomly",
   JUMP_FORWARD: "battlegorithms_jump_forward",
   STAY_STILL: "battlegorithms_stay_still",
-  PLACE_BARRIER: "battlegorithms_place_barrier"
+  PLACE_BARRIER: "battlegorithms_place_barrier",
+  FREEZE_OPPONENTS: "battlegorithms_freeze_opponents"
 };
 
 export const TEAM1_HUMAN_INITIAL_POS = { x: 1, y: Math.floor(ROWS / 2) - 2 };

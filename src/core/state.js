@@ -27,6 +27,7 @@ export function createInitialState() {
     gameMap: MAPS[DEFAULT_MAP_KEY],
     animationSpeedFactor: DEFAULT_ANIMATION_SPEED_FACTOR,
     teamScores: { 1: 0, 2: 0 },
+    teamAreaFreezeUsed: { 1: false, 2: false },
     pointsToWin: POINTS_TO_WIN,
     currentModeView: GAME_VIEW_MODES.GUIDED_LEVELS,
     levels: [],
@@ -37,12 +38,19 @@ export function createInitialState() {
     levelAttemptCount: 0,
     lastLevelResultReason: null,
     currentToolboxBlockTypes: [],
+    currentSensorObjectTypes: [],
+    currentSensorRelationTypes: [],
+    currentMoveTowardTargetTypes: [],
     autoStayHumanRunnerIds: [],
+    setupBarriers: [],
+    displayFlagOverrides: null,
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
     tutorialSeen: {},
     activeTutorial: null,
     spotlightRect: null,
-    showModePicker: true
+    showModePicker: true,
+    randomFn: Math.random,
+    runnerActionHistory: {}
   };
 }
 

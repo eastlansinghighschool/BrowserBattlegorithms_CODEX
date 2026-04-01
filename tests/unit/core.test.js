@@ -1,16 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as Blockly from "blockly";
 import {
+  AI_ACTION_TYPES,
   BLOCK_TYPES,
   GAME_MODES,
   GAME_VIEW_MODES,
   HUMAN_TURN_BEHAVIORS,
   LEVEL_RESULT,
-  LEVEL_STATUS
+  LEVEL_STATUS,
+  AREA_FREEZE_DURATION_TURNS,
+  MOVE_TOWARD_TARGETS,
+  SENSOR_OBJECT_TYPES,
+  SENSOR_RELATION_TYPES
 } from "../../src/config/constants.js";
 import { getLevelDefinitions } from "../../src/config/levels.js";
 import { buildMatch } from "../../src/testSupport/builders.js";
-import { isCellBlockedByImpassables, translateActionDecision } from "../../src/core/movement.js";
+import { evaluateCondition, evaluateSensorCondition } from "../../src/core/conditions.js";
+import {
+  isCellBlockedByImpassables,
+  translateActionDecision,
+  translateMoveTowardDecision
+} from "../../src/core/movement.js";
 import { resolveCollision } from "../../src/core/collisions.js";
 import { checkForFlagPickup, checkForScoring } from "../../src/core/scoring.js";
 import { resetRound } from "../../src/core/setup.js";
@@ -25,7 +36,20 @@ import {
   initializeLevelState,
   startLevel
 } from "../../src/core/levels.js";
-import { getToolboxBlockTypesForMode } from "../../src/ai/blockly/blocks.js";
+import {
+  getToolboxBlockTypesForMode,
+  registerBattleBlocklyBlocks
+} from "../../src/ai/blockly/blocks.js";
+import { getFirstRunnableAction, loadWorkspaceXml, updateBlocklyExecutionHints } from "../../src/ai/blockly/workspace.js";
+import { processTurnActions } from "../../src/core/turnEngine.js";
+
+function buildBlocklyAppWithXml(xmlText) {
+  registerBattleBlocklyBlocks();
+  const app = createApp();
+  app.blocklyWorkspace = new Blockly.Workspace();
+  loadWorkspaceXml(app, xmlText);
+  return app;
+}
 
 test("PvP setup creates four runners with two humans", () => {
   const app = buildMatch({ currentGameMode: GAME_MODES.PLAYER_VS_PLAYER });
@@ -114,14 +138,35 @@ test("npc type 2 returns a legal action shape", () => {
 
 test("level definitions load with the expected starter levels", () => {
   const levels = getLevelDefinitions();
-  assert.equal(levels.length, 2);
+  assert.equal(levels.length, 20);
   assert.deepEqual(
     levels.map((level) => level.id),
-    ["move-to-target", "reach-enemy-flag"]
+    [
+      "move-to-target",
+      "reach-enemy-flag",
+      "score-a-point",
+      "barrier-detour",
+      "mirror-forward",
+      "sensor-barrier-branch",
+      "watch-the-wall",
+      "find-the-human",
+      "find-the-enemy-flag",
+      "human-runner-practice",
+      "move-toward-flag",
+      "bring-it-home",
+      "enemy-nearby",
+      "jump-the-gap",
+      "jump-if-ready",
+      "build-the-barrier",
+      "stay-still-can-do-something",
+      "relay-race",
+      "my-side-their-side",
+      "freeze-the-lane"
+    ]
   );
 });
 
-test("guided mode initializes with level 1 available and level 2 locked", () => {
+test("guided mode initializes with level 1 available and later levels locked", () => {
   const app = createApp();
   initializeLevelState(app);
   const snapshot = getLevelStateSnapshot(app);
@@ -129,6 +174,10 @@ test("guided mode initializes with level 1 available and level 2 locked", () => 
   assert.equal(snapshot.currentLevelId, "move-to-target");
   assert.equal(snapshot.levelProgress["move-to-target"], LEVEL_STATUS.AVAILABLE);
   assert.equal(snapshot.levelProgress["reach-enemy-flag"], LEVEL_STATUS.LOCKED);
+  assert.equal(snapshot.levelProgress["score-a-point"], LEVEL_STATUS.LOCKED);
+  assert.equal(snapshot.levelProgress["barrier-detour"], LEVEL_STATUS.LOCKED);
+  assert.equal(snapshot.levelProgress["mirror-forward"], LEVEL_STATUS.LOCKED);
+  assert.equal(snapshot.levelProgress["freeze-the-lane"], LEVEL_STATUS.LOCKED);
   assert.equal(snapshot.humanTurnBehavior, HUMAN_TURN_BEHAVIORS.AUTO_SKIP);
 });
 
@@ -137,6 +186,9 @@ test("starter levels include onboarding copy and tutorial steps", () => {
   assert.ok(firstLevel.introText.includes("frozen"));
   assert.ok(firstLevel.tutorialSteps.length >= 3);
   assert.ok(secondLevel.tutorialSteps.some((step) => step.body.includes("Move Backward")));
+  const thirdLevel = getLevelDefinitions().find((level) => level.id === "score-a-point");
+  assert.ok(thirdLevel.toolboxBlockTypes.includes(BLOCK_TYPES.IF_HAVE_ENEMY_FLAG_ELSE));
+  assert.ok(thirdLevel.tutorialSteps.some((step) => step.body.includes("first move")));
 });
 
 test("guided toolbox restriction reflects each level's allowed blocks", () => {
@@ -155,6 +207,64 @@ test("guided toolbox restriction reflects each level's allowed blocks", () => {
   const secondLevel = app.state.levels.find((level) => level.id === "reach-enemy-flag");
   const secondLevelToolbox = getToolboxBlockTypesForMode(app, secondLevel);
   assert.ok(secondLevelToolbox.includes(BLOCK_TYPES.MOVE_BACKWARD));
+
+  const thirdLevel = app.state.levels.find((level) => level.id === "score-a-point");
+  const thirdLevelToolbox = getToolboxBlockTypesForMode(app, thirdLevel);
+  assert.ok(thirdLevelToolbox.includes(BLOCK_TYPES.IF_HAVE_ENEMY_FLAG));
+
+  const fourthLevel = app.state.levels.find((level) => level.id === "barrier-detour");
+  const fourthLevelToolbox = getToolboxBlockTypesForMode(app, fourthLevel);
+  assert.ok(fourthLevelToolbox.includes(BLOCK_TYPES.IF_BARRIER_IN_FRONT));
+  assert.ok(fourthLevelToolbox.includes(BLOCK_TYPES.IF_BARRIER_IN_FRONT_ELSE));
+
+  const sixthLevel = app.state.levels.find((level) => level.id === "sensor-barrier-branch");
+  const sixthLevelToolbox = getToolboxBlockTypesForMode(app, sixthLevel);
+  assert.ok(sixthLevelToolbox.includes(BLOCK_TYPES.IF_SENSOR_MATCHES));
+  assert.ok(sixthLevelToolbox.includes(BLOCK_TYPES.IF_SENSOR_MATCHES_ELSE));
+  assert.deepEqual(sixthLevel.sensorObjectTypes, [SENSOR_OBJECT_TYPES.BARRIER]);
+  assert.deepEqual(sixthLevel.sensorRelationTypes, [SENSOR_RELATION_TYPES.DIRECTLY_IN_FRONT]);
+
+  const eleventhLevel = app.state.levels.find((level) => level.id === "move-toward-flag");
+  const eleventhLevelToolbox = getToolboxBlockTypesForMode(app, eleventhLevel);
+  assert.ok(eleventhLevelToolbox.includes(BLOCK_TYPES.MOVE_TOWARD));
+});
+
+test("later sensing levels expose the intended object and relation unlocks", () => {
+  const levels = getLevelDefinitions();
+  const watchTheWall = levels.find((level) => level.id === "watch-the-wall");
+  assert.deepEqual(watchTheWall.sensorObjectTypes, [SENSOR_OBJECT_TYPES.EDGE_OR_WALL]);
+  assert.deepEqual(watchTheWall.sensorRelationTypes, [SENSOR_RELATION_TYPES.DIRECTLY_IN_FRONT]);
+
+  const findTheHuman = levels.find((level) => level.id === "find-the-human");
+  assert.deepEqual(findTheHuman.sensorObjectTypes, [SENSOR_OBJECT_TYPES.HUMAN_RUNNER]);
+  assert.deepEqual(findTheHuman.sensorRelationTypes, [
+    SENSOR_RELATION_TYPES.ANYWHERE_FORWARD,
+    SENSOR_RELATION_TYPES.ANYWHERE_BEHIND,
+    SENSOR_RELATION_TYPES.ANYWHERE_ABOVE,
+    SENSOR_RELATION_TYPES.ANYWHERE_BELOW
+  ]);
+});
+
+test("later guided levels expose the intended Move Toward and advanced condition restrictions", () => {
+  const levels = getLevelDefinitions();
+  const moveTowardFlag = levels.find((level) => level.id === "move-toward-flag");
+  assert.deepEqual(moveTowardFlag.moveTowardTargetTypes, [MOVE_TOWARD_TARGETS.ENEMY_FLAG]);
+
+  const bringItHome = levels.find((level) => level.id === "bring-it-home");
+  assert.deepEqual(bringItHome.moveTowardTargetTypes, [
+    MOVE_TOWARD_TARGETS.ENEMY_FLAG,
+    MOVE_TOWARD_TARGETS.MY_BASE
+  ]);
+  assert.ok(bringItHome.toolboxBlockTypes.includes(BLOCK_TYPES.IF_HAVE_ENEMY_FLAG_ELSE));
+
+  const humanPractice = levels.find((level) => level.id === "human-runner-practice");
+  assert.equal(humanPractice.humanTurnBehavior, HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT);
+
+  const freezeLane = levels.find((level) => level.id === "freeze-the-lane");
+  assert.ok(freezeLane.toolboxBlockTypes.includes(BLOCK_TYPES.FREEZE_OPPONENTS));
+  assert.ok(freezeLane.toolboxBlockTypes.includes(BLOCK_TYPES.IF_AREA_FREEZE_READY_ELSE));
+  assert.deepEqual(freezeLane.sensorObjectTypes, [SENSOR_OBJECT_TYPES.ENEMY_RUNNER]);
+  assert.deepEqual(freezeLane.sensorRelationTypes, [SENSOR_RELATION_TYPES.WITHIN_2, SENSOR_RELATION_TYPES.WITHIN_3]);
 });
 
 test("level 1 passes when the ally reaches the target cell and unlocks level 2", () => {
@@ -187,6 +297,124 @@ test("level 2 passes when the ally reaches the enemy flag", () => {
   assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
 });
 
+test("level 4 target matches the intended detour lane", () => {
+  const level4 = getLevelDefinitions().find((level) => level.id === "barrier-detour");
+  assert.deepEqual(level4.winCondition.targetCell, { x: 6, y: 4 });
+  assert.ok(level4.toolboxBlockTypes.includes(BLOCK_TYPES.IF_BARRIER_IN_FRONT_ELSE));
+});
+
+test("level 3 passes when team 1 scores a point and unlocks level 4", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  app.state.levelProgress["reach-enemy-flag"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["score-a-point"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "score-a-point");
+
+  app.state.teamScores[1] = 1;
+
+  const result = evaluateLevelProgress(app);
+  assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
+  assert.equal(app.state.levelProgress["barrier-detour"], LEVEL_STATUS.AVAILABLE);
+});
+
+test("level 3 turn limit allows the intended out-and-back route", () => {
+  const level3 = getLevelDefinitions().find((level) => level.id === "score-a-point");
+  assert.equal(level3.failureCondition.maxTurns, 20);
+});
+
+test("human practice level requires reaching the goal after a special action", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  Object.keys(app.state.levelProgress).forEach((levelId, index) => {
+    app.state.levelProgress[levelId] = index === 9 ? LEVEL_STATUS.AVAILABLE : LEVEL_STATUS.PASSED;
+  });
+  startLevel(app, "human-runner-practice");
+
+  const human = app.state.allRunners.find((runner) => runner.id === "runner_1_HumanP1");
+  human.gridX = 4;
+  human.gridY = 4;
+  app.state.runnerActionHistory[human.id] = [AI_ACTION_TYPES.STAY_STILL];
+
+  const result = evaluateLevelProgress(app);
+  assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
+});
+
+test("build the barrier level passes when the target barrier cell is occupied", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  Object.keys(app.state.levelProgress).forEach((levelId, index) => {
+    app.state.levelProgress[levelId] = index < 15 ? LEVEL_STATUS.PASSED : LEVEL_STATUS.LOCKED;
+  });
+  app.state.levelProgress["build-the-barrier"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "build-the-barrier");
+
+  app.state.barriers.push({ id: "test_barrier", ownerRunnerId: "runner_1_AI_AllyP1", gridX: 4, gridY: 4 });
+
+  const result = evaluateLevelProgress(app);
+  assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
+});
+
+test("level 4 passes when the ally reaches the detour target cell", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  app.state.levelProgress["score-a-point"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["barrier-detour"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "barrier-detour");
+
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 6;
+  actor.gridY = 4;
+
+  const result = evaluateLevelProgress(app);
+  assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
+  assert.equal(app.state.levelProgress["mirror-forward"], LEVEL_STATUS.AVAILABLE);
+});
+
+test("level 5 teaches playDirection from the opposite side of the map", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  app.state.levelProgress["move-to-target"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["reach-enemy-flag"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["score-a-point"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["barrier-detour"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["mirror-forward"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "mirror-forward");
+
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  assert.equal(actor.playDirection, -1);
+  actor.gridX = 7;
+  actor.gridY = 4;
+
+  const result = evaluateLevelProgress(app);
+  assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
+  assert.equal(app.state.levelProgress["sensor-barrier-branch"], LEVEL_STATUS.AVAILABLE);
+});
+
+test("generic sensing levels unlock sequentially through the first sensing track", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  app.state.levelProgress["move-to-target"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["reach-enemy-flag"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["score-a-point"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["barrier-detour"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["mirror-forward"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["sensor-barrier-branch"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "sensor-barrier-branch");
+  let actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 6;
+  actor.gridY = 4;
+  evaluateLevelProgress(app);
+  assert.equal(app.state.levelProgress["watch-the-wall"], LEVEL_STATUS.AVAILABLE);
+
+  app.state.levelProgress["watch-the-wall"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "watch-the-wall");
+  actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 5;
+  actor.gridY = 5;
+  evaluateLevelProgress(app);
+  assert.equal(app.state.levelProgress["find-the-human"], LEVEL_STATUS.AVAILABLE);
+});
+
 test("guided levels fail when the turn limit is exceeded", () => {
   const app = createApp();
   initializeLevelState(app);
@@ -207,5 +435,470 @@ test("free play keeps full toolbox access and leaves level progress intact", () 
   const toolbox = getToolboxBlockTypesForMode(app, null);
   assert.equal(app.state.currentModeView, GAME_VIEW_MODES.FREE_PLAY);
   assert.ok(toolbox.includes(BLOCK_TYPES.JUMP_FORWARD));
+  assert.ok(toolbox.includes(BLOCK_TYPES.MOVE_TOWARD));
+  assert.ok(toolbox.includes(BLOCK_TYPES.MOVE_RANDOMLY));
+  assert.ok(toolbox.includes(BLOCK_TYPES.FREEZE_OPPONENTS));
+  assert.ok(toolbox.includes(BLOCK_TYPES.IF_CAN_JUMP_ELSE));
+  assert.ok(toolbox.includes(BLOCK_TYPES.IF_AREA_FREEZE_READY_ELSE));
   assert.equal(app.state.levelProgress["move-to-target"], LEVEL_STATUS.PASSED);
+});
+
+test("Move Toward enemy flag chooses a forward step in the open lane", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  const decision = translateMoveTowardDecision(app.state, actor, MOVE_TOWARD_TARGETS.ENEMY_FLAG);
+  assert.equal(decision.type, AI_ACTION_TYPES.MOVE_FORWARD);
+});
+
+test("Move Toward my base chooses a backward step when carrying the flag home", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 8;
+  actor.gridY = 4;
+  const decision = translateMoveTowardDecision(app.state, actor, MOVE_TOWARD_TARGETS.MY_BASE);
+  assert.equal(decision.type, AI_ACTION_TYPES.MOVE_BACKWARD);
+});
+
+test("Move Toward human runner targets the allied human", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 5;
+  actor.gridY = 4;
+  const human = app.state.allRunners.find((runner) => runner.team === 1 && runner.isHumanControlled);
+  human.gridX = 5;
+  human.gridY = 2;
+  const decision = translateMoveTowardDecision(app.state, actor, MOVE_TOWARD_TARGETS.HUMAN_RUNNER);
+  assert.equal(decision.type, AI_ACTION_TYPES.MOVE_UP_SCREEN);
+});
+
+test("Move Toward closest enemy selects the nearest active enemy deterministically", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 5;
+  actor.gridY = 4;
+  const enemies = app.state.allRunners.filter((runner) => runner.team === 2);
+  enemies[0].gridX = 7;
+  enemies[0].gridY = 4;
+  enemies[1].gridX = 5;
+  enemies[1].gridY = 1;
+  const decision = translateMoveTowardDecision(app.state, actor, MOVE_TOWARD_TARGETS.CLOSEST_ENEMY);
+  assert.equal(decision.type, AI_ACTION_TYPES.MOVE_FORWARD);
+});
+
+test("Move Toward breaks equal-axis ties by preferring forward or behind before vertical movement", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 4;
+  actor.gridY = 4;
+  const human = app.state.allRunners.find((runner) => runner.team === 1 && runner.isHumanControlled);
+  human.gridX = 6;
+  human.gridY = 2;
+  const decision = translateMoveTowardDecision(app.state, actor, MOVE_TOWARD_TARGETS.HUMAN_RUNNER);
+  assert.equal(decision.type, AI_ACTION_TYPES.MOVE_FORWARD);
+});
+
+test("Move Randomly returns a deterministic legal action when randomFn is stubbed", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  app.state.randomFn = () => 0.74;
+  const queued = translateActionDecision(actor, { type: AI_ACTION_TYPES.MOVE_RANDOMLY }, app.state);
+  assert.equal(queued.actionType, AI_ACTION_TYPES.MOVE_UP_SCREEN);
+});
+
+test("condition helpers detect barrier, enemy, and carried-flag state", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 1;
+  actor.gridY = 3;
+
+  app.state.barriers.push({ id: "barrier_test", gridX: 2, gridY: 3, ownerRunnerId: "test" });
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_BARRIER_IN_FRONT), true);
+
+  app.state.barriers = [];
+  const enemy = app.state.allRunners.find((runner) => runner.team === 2);
+  enemy.gridX = 2;
+  enemy.gridY = 3;
+  enemy.isFrozen = false;
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_ENEMY_IN_FRONT), true);
+
+  actor.hasEnemyFlag = true;
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_HAVE_ENEMY_FLAG), true);
+});
+
+test("resource, team, and territory conditions evaluate correctly", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  const human = app.state.allRunners.find((runner) => runner.team === 1 && runner.isHumanControlled);
+
+  actor.canJump = true;
+  actor.canPlaceBarrier = true;
+  actor.activeBarrierId = null;
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_CAN_JUMP), true);
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_CAN_PLACE_BARRIER), true);
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_AREA_FREEZE_READY), true);
+
+  human.hasEnemyFlag = true;
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_TEAMMATE_HAS_FLAG), true);
+
+  actor.gridX = 1;
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_ON_MY_SIDE), true);
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_ON_ENEMY_SIDE), false);
+  actor.gridX = 8;
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_ON_MY_SIDE), false);
+  assert.equal(evaluateCondition(app.state, actor, BLOCK_TYPES.IF_ON_ENEMY_SIDE), true);
+});
+
+test("generic sensor evaluation supports barrier, edge or wall, enemy flag, and human runner relations", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 1;
+  actor.gridY = 3;
+
+  app.state.barriers.push({ id: "barrier_test", gridX: 2, gridY: 3, ownerRunnerId: "test" });
+  assert.equal(
+    evaluateSensorCondition(app.state, actor, SENSOR_OBJECT_TYPES.BARRIER, SENSOR_RELATION_TYPES.DIRECTLY_IN_FRONT),
+    true
+  );
+
+  actor.gridX = 11;
+  actor.gridY = 3;
+  assert.equal(
+    evaluateSensorCondition(app.state, actor, SENSOR_OBJECT_TYPES.EDGE_OR_WALL, SENSOR_RELATION_TYPES.DIRECTLY_IN_FRONT),
+    true
+  );
+
+  actor.gridX = 1;
+  actor.gridY = 5;
+  const human = app.state.allRunners.find((runner) => runner.team === 1 && runner.isHumanControlled);
+  human.gridX = 6;
+  human.gridY = 2;
+  assert.equal(
+    evaluateSensorCondition(app.state, actor, SENSOR_OBJECT_TYPES.HUMAN_RUNNER, SENSOR_RELATION_TYPES.ANYWHERE_FORWARD),
+    true
+  );
+  assert.equal(
+    evaluateSensorCondition(app.state, actor, SENSOR_OBJECT_TYPES.HUMAN_RUNNER, SENSOR_RELATION_TYPES.ANYWHERE_ABOVE),
+    true
+  );
+
+  app.state.gameFlags[2].gridX = 6;
+  app.state.gameFlags[2].gridY = 4;
+  assert.equal(
+    evaluateSensorCondition(app.state, actor, SENSOR_OBJECT_TYPES.ENEMY_FLAG, SENSOR_RELATION_TYPES.WITHIN_6),
+    true
+  );
+});
+
+test("Blockly conditionals select the first matching action and fall through when false", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_have_enemy_flag">
+            <statement name="DO">
+              <block type="battlegorithms_move_backward"></block>
+            </statement>
+            <next>
+              <block type="battlegorithms_move_forward"></block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+
+  let action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_FORWARD");
+
+  actor.hasEnemyFlag = true;
+  action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_BACKWARD");
+});
+
+test("Blockly if/else block selects the else branch when the flag is not carried", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_have_enemy_flag_else">
+            <statement name="DO">
+              <block type="battlegorithms_move_backward"></block>
+            </statement>
+            <statement name="ELSE">
+              <block type="battlegorithms_move_forward"></block>
+            </statement>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+
+  let action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_FORWARD");
+
+  actor.hasEnemyFlag = true;
+  action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_BACKWARD");
+});
+
+test("Blockly barrier if/else block selects detour vs forward movement correctly", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_barrier_in_front_else">
+            <statement name="DO">
+              <block type="battlegorithms_move_down_screen"></block>
+            </statement>
+            <statement name="ELSE">
+              <block type="battlegorithms_move_forward"></block>
+            </statement>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 1;
+  actor.gridY = 3;
+
+  let action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_FORWARD");
+
+  app.state.barriers.push({ id: "barrier_test", gridX: 2, gridY: 3, ownerRunnerId: "test" });
+  action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_DOWN_SCREEN");
+});
+
+test("generic sensor if/else block chooses branches from object and relation dropdowns", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_sensor_matches_else">
+            <field name="OBJECT">BARRIER</field>
+            <field name="RELATION">DIRECTLY_IN_FRONT</field>
+            <statement name="DO">
+              <block type="battlegorithms_move_down_screen"></block>
+            </statement>
+            <statement name="ELSE">
+              <block type="battlegorithms_move_forward"></block>
+            </statement>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 1;
+  actor.gridY = 3;
+
+  let action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_FORWARD");
+
+  app.state.barriers.push({ id: "barrier_test", gridX: 2, gridY: 3, ownerRunnerId: "test" });
+  action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_DOWN_SCREEN");
+});
+
+test("generic sensor if block can use distance relations", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_sensor_matches">
+            <field name="OBJECT">HUMAN_RUNNER</field>
+            <field name="RELATION">WITHIN_4</field>
+            <statement name="DO">
+              <block type="battlegorithms_move_up_screen"></block>
+            </statement>
+            <next>
+              <block type="battlegorithms_move_forward"></block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  const human = app.state.allRunners.find((runner) => runner.team === 1 && runner.isHumanControlled);
+  actor.gridX = 3;
+  actor.gridY = 4;
+  human.gridX = 5;
+  human.gridY = 3;
+
+  const action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_UP_SCREEN");
+});
+
+test("new free-play if/else blocks choose readiness and teammate branches correctly", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_can_jump_else">
+            <statement name="DO">
+              <block type="battlegorithms_jump_forward"></block>
+            </statement>
+            <statement name="ELSE">
+              <block type="battlegorithms_move_forward"></block>
+            </statement>
+            <next>
+              <block type="battlegorithms_if_teammate_has_flag_else">
+                <statement name="DO">
+                  <block type="battlegorithms_move_backward"></block>
+                </statement>
+                <statement name="ELSE">
+                  <block type="battlegorithms_move_down_screen"></block>
+                </statement>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  const human = app.state.allRunners.find((runner) => runner.team === 1 && runner.isHumanControlled);
+
+  let action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "JUMP_FORWARD");
+
+  actor.canJump = false;
+  action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_FORWARD");
+
+  const teammateApp = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_teammate_has_flag_else">
+            <statement name="DO">
+              <block type="battlegorithms_move_backward"></block>
+            </statement>
+            <statement name="ELSE">
+              <block type="battlegorithms_move_down_screen"></block>
+            </statement>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  teammateApp.state = match.state;
+  action = getFirstRunnableAction(teammateApp, actor);
+  assert.equal(action.type, "MOVE_DOWN_SCREEN");
+  human.hasEnemyFlag = true;
+  action = getFirstRunnableAction(teammateApp, actor);
+  assert.equal(action.type, "MOVE_BACKWARD");
+});
+
+test("area freeze freezes nearby enemies once per round and resets on round reset", () => {
+  const app = buildMatch();
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  const enemies = app.state.allRunners.filter((runner) => runner.team === 2);
+  actor.gridX = 5;
+  actor.gridY = 4;
+  enemies[0].gridX = 6;
+  enemies[0].gridY = 4;
+  enemies[1].gridX = 10;
+  enemies[1].gridY = 6;
+
+  app.state.mainGameState = "RUNNING";
+  app.state.currentTurnState = "PROCESSING_ACTION";
+  app.state.activeRunnerIndex = app.state.allRunners.indexOf(actor);
+  app.state.queuedActionForCurrentRunner = {
+    runner: actor,
+    actionType: AI_ACTION_TYPES.FREEZE_OPPONENTS,
+    targetGridX: actor.gridX,
+    targetGridY: actor.gridY
+  };
+  processTurnActions(app);
+
+  assert.equal(app.state.teamAreaFreezeUsed[1], true);
+  assert.equal(enemies[0].isFrozen, true);
+  assert.equal(enemies[0].frozenTurnsRemaining, AREA_FREEZE_DURATION_TURNS);
+  assert.equal(enemies[1].isFrozen, false);
+
+  resetRound(app.state);
+  assert.equal(app.state.teamAreaFreezeUsed[1], false);
+});
+
+test("condition blocks without an action body fall through safely", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_if_barrier_in_front">
+            <next>
+              <block type="battlegorithms_move_down_screen"></block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  app.state.barriers.push({ id: "barrier_test", gridX: actor.gridX + 1, gridY: actor.gridY, ownerRunnerId: "test" });
+
+  const action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, "MOVE_DOWN_SCREEN");
+});
+
+test("ignored unattached Blockly blocks are disabled with a warning", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_move_forward"></block>
+        </next>
+      </block>
+      <block type="battlegorithms_move_backward" x="220" y="24"></block>
+    </xml>
+  `);
+
+  updateBlocklyExecutionHints(app);
+  const unattached = app.blocklyWorkspace.getBlocksByType(BLOCK_TYPES.MOVE_BACKWARD, false)[0];
+  assert.equal(unattached.isEnabled(), false);
+});
+
+test("Blockly Move Toward block returns an action with the selected target", () => {
+  const app = buildBlocklyAppWithXml(`
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          <block type="battlegorithms_move_toward">
+            <field name="TARGET">MY_BASE</field>
+          </block>
+        </next>
+      </block>
+    </xml>
+  `);
+  const match = buildMatch();
+  app.state = match.state;
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 8;
+  actor.gridY = 4;
+
+  const action = getFirstRunnableAction(app, actor);
+  assert.equal(action.type, AI_ACTION_TYPES.MOVE_TOWARD);
+  assert.equal(action.targetType, MOVE_TOWARD_TARGETS.MY_BASE);
+
+  const queued = translateActionDecision(actor, action, app.state);
+  assert.equal(queued.actionType, AI_ACTION_TYPES.MOVE_BACKWARD);
 });

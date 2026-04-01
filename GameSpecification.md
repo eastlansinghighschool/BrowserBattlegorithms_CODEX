@@ -1,6 +1,6 @@
 # **Browser Battlegorithms \- Game Specification V1.1**
 
-**Implementation Status Note (2026-03-31):** The live codebase is currently a Phase 6a prototype with a modular ES-module architecture, Vite-based build workflow, command-line rule tests, and Playwright browser smoke tests. This specification still describes the target product vision; not every later-phase feature below is implemented yet.
+**Implementation Status Note (2026-04-01):** The live codebase is currently a Phase 7 expansion build with a modular ES-module architecture, Vite-based build workflow, command-line rule tests, and Playwright browser smoke tests. The implemented project now includes guided onboarding, spotlight tutorials, a required Blockly `On Each Turn` event block, first conditional Blockly blocks, a generic sensing family with object/relation dropdowns, a parameterized `Move Toward [target]` helper block, a broader free-play sandbox block set including `Move Randomly` and `Freeze Opponents`, and a custom guided-level picker. This specification still describes the broader target product vision; not every later-phase feature below is implemented yet.
 
 ## **1\. Introduction & Educational Goals**
 
@@ -145,7 +145,7 @@ Each active (not frozen) runner can perform **one** action per turn.
   * Move Up (screen)  
   * Move Down (screen)  
   * Move Randomly (cardinal)  
-  * Move Towards \[Target\] (Dropdown: Enemy Flag, My Base) \- *Introduced in later levels.*  
+  * Move Towards \[Target\] (Dropdown: Enemy Flag, My Base, Human Runner, Closest Enemy) \- helper movement using a deterministic one-step heuristic rather than full pathfinding.  
   * Jump Forward  
   * Place Barrier (in front)  
   * Stay Still  
@@ -223,6 +223,7 @@ When an active runner attempts to move into a cell occupied by an active opposin
 **6.2. Block Categories & Specific Blocks (Example Refinements):**
 
 * **Actions:**  
+  * On Each Turn (required event block; immovable, undeletable, starter anchor for student programs in guided and free-play workspaces)  
   * Move Forward (engine handles direction)  
   * Move Backward (engine handles direction)  
   * Move Up (on screen)  
@@ -231,9 +232,11 @@ When an active runner attempts to move into a cell occupied by an active opposin
   * Stay Still (removes barrier if facing)  
   * Jump Forward (engine handles direction)  
   * Place Barrier (in front)  
-  * *Later:* Move Towards \[Enemy Flag / My Base\]  
+  * Move Towards \[Enemy Flag / My Base / Human Runner / Closest Enemy\]  
   * *Later (AI Ally Only):* Use Area Freeze (at my location)  
 * **Conditions:**  
+  * If [Object] is [Relation]  
+  * If [Object] is [Relation] / Else  
   * If I have enemy flag  
   * If enemy is in front  
   * If barrier is in front  
@@ -246,6 +249,19 @@ When an active runner attempts to move into a cell occupied by an active opposin
 * **Logic:** If-Then, If-Then-Else, AND, OR, NOT.  
 * **Sensing (Later/Advanced):** My X, My Y, Enemy Flag X, Enemy Flag Y, My Base X, My Base Y. The playDirection value block is deferred for advanced use.
 
+**6.3. Blockly Execution Model (Current Guided MVP Clarification)**
+
+* Student programs currently start from a required `On Each Turn` block.
+* Only blocks attached beneath that event are considered part of the ally's program.
+* In the current early-phase execution model, only the **first action** under `On Each Turn` is executed each ally turn.
+* One-branch conditional blocks may choose which action becomes that first executed action, but the ally still performs only one action each turn.
+* `Move Towards [Target]` is a one-step helper action that selects a single move toward the chosen target for the current turn. It is intentionally not full pathfinding.  
+* The generic sensing blocks use an object dropdown (such as barrier, edge or wall, enemy flag, or human runner) and a relation dropdown (such as directly in front, anywhere above, or within N spaces).  
+* Distance-based sensing currently uses Manhattan distance so "within N spaces" means the number of ideal grid moves to reach that target if nothing blocked the path.  
+* Free play currently exposes a broader Blockly sandbox than guided mode, including readiness checks (`If I can jump`, `If I can place barrier`, `If Area Freeze is ready`), teammate/territory checks, `Move Randomly`, and `Freeze Opponents`.  
+* Additional sequential actions after that first action are intentionally ignored for now and should be visually marked as such so beginners are not misled.  
+* Unattached blocks elsewhere in the workspace are also ignored and should be visually indicated as inactive.
+
 ## **7\. Scaffolded Levels / Challenges (Initial Outline)**
 
 *(This section remains largely the same, but level objectives should align with the simplified mechanics, e.g., Level 5 introduces human control but against a very basic NPC. Level 6 could be hot-seat or vs. a slightly better NPC, focusing on barrier use.)*
@@ -257,6 +273,17 @@ When an active runner attempts to move into a cell occupied by an active opposin
   * Level 4 (Obstacle Map Score): Team score increments on a map with pre-set barriers.  
   * Level 5 (First Match): Player's team wins a best-of-3 (or single point) match.  
   * Level 6 (Hot-Seat/Advanced NPC): Player's team wins, or specific strategic goals met (e.g., block X enemy advances with barriers).
+
+**Guided Onboarding Expectations**
+
+* The first-run guided experience should make key tutorial constraints explicit instead of assuming they are obvious.
+* The product should support spotlight/callout overlays that can direct student attention to:
+  * the board
+  * target cells or flags
+  * Blockly/toolbox changes
+  * replaying tutorial help
+* Guided levels should include concise intros/tips explaining unusual states such as frozen practice opponents or auto-skipped human turns.
+* Guided level navigation should scale beyond a handful of levels, ideally through a richer picker/popover rather than an ever-growing row of buttons.
 
 ## **8\. Technical Stack & Deployment**
 
@@ -274,7 +301,7 @@ When an active runner attempts to move into a cell occupied by an active opposin
   * V1: "Export AI Program (XML)" and "Import AI Program (XML)" for portability.
 * **Testing Strategy:**  
   * Command-line JavaScript tests should validate pure rule behavior such as setup, movement, collisions, scoring, round reset, and NPC action legality.  
-  * Browser tests should validate app boot, Blockly visibility, play/reset flow, keyboard interactions, and representative UI/gameplay states.  
+  * Browser tests should validate app boot, mode selection, tutorial overlays, Blockly visibility, play/reset flow, keyboard interactions, level navigation UI, and representative UI/gameplay states.  
 
 ## **9\. "Fun Factor" Enhancements (Post-Core Development)**
 

@@ -1,8 +1,15 @@
 import { GAME_VIEW_MODES, HUMAN_TURN_BEHAVIORS, LEVEL_RESULT, LEVEL_STATUS } from "../config/constants.js";
 import {
+  getBlockDisplayLabel,
+  getMoveTowardTargetLabel,
+  getSensorObjectLabel,
+  getSensorRelationLabel
+} from "../ai/blockly/blocks.js";
+import {
   enterFreePlay,
   enterGuidedMode,
   getCurrentLevel,
+  getNextAvailableLevelId,
   goToNextLevel,
   setGuidedHumanTurnBehavior,
   startLevel
@@ -23,6 +30,19 @@ function humanizeResultReason(reason) {
   if (reason === "turn_limit_exceeded") return "The turn limit was reached before the goal was met.";
   if (reason === "manual_reset") return "The level was restarted.";
   return reason;
+}
+
+function describeGoal(level) {
+  if (level.winCondition.type === "runner_reaches_cell") {
+    return `Reach (${level.winCondition.targetCell.x}, ${level.winCondition.targetCell.y})`;
+  }
+  if (level.winCondition.type === "runner_reaches_enemy_flag") {
+    return "Reach the enemy flag.";
+  }
+  if (level.winCondition.type === "team_scores_point") {
+    return "Carry the enemy flag back home to score a point.";
+  }
+  return "Complete the challenge.";
 }
 
 function getLevelStatusLabel(status) {
@@ -121,13 +141,16 @@ export function renderLevelPanel(app) {
 
   const inGuided = app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS;
   const resultReason = humanizeResultReason(app.state.lastLevelResultReason);
+  const successLead = currentLevel.winCondition.type === "team_scores_point"
+    ? "Level passed. Scoring a point completed the challenge."
+    : "Level passed.";
   const resultMessage = app.state.activeLevelResult === LEVEL_RESULT.PASSED
-    ? `<p class="level-result success">Level passed. ${resultReason}</p>`
+    ? `<p class="level-result success">${successLead} ${resultReason}</p>`
     : app.state.activeLevelResult === LEVEL_RESULT.FAILED
       ? `<p class="level-result failure">Level failed. ${resultReason}</p>`
       : "";
 
-  const nextLevelButton = app.state.activeLevelResult === LEVEL_RESULT.PASSED && app.state.levelProgress["reach-enemy-flag"] !== LEVEL_STATUS.LOCKED && app.state.currentLevelId !== "reach-enemy-flag"
+  const nextLevelButton = app.state.activeLevelResult === LEVEL_RESULT.PASSED && getNextAvailableLevelId(app)
     ? '<button data-action="next-level">Next Level</button>'
     : "";
   const pickerOpen = Boolean(app.ui.isLevelPickerOpen);
@@ -151,8 +174,11 @@ export function renderLevelPanel(app) {
       <div class="level-summary">
         <p>${escapeHtml(currentLevel.description)}</p>
         <p class="level-intro">${escapeHtml(currentLevel.introText || "")}</p>
-        <p><strong>Goal:</strong> ${currentLevel.winCondition.type === "runner_reaches_cell" ? `Reach (${currentLevel.winCondition.targetCell.x}, ${currentLevel.winCondition.targetCell.y})` : "Reach the enemy flag."}</p>
-        <p><strong>Allowed blocks:</strong> ${currentLevel.toolboxBlockTypes.join(", ")}</p>
+        <p><strong>Goal:</strong> ${escapeHtml(describeGoal(currentLevel))}</p>
+        <p><strong>Allowed blocks:</strong> ${currentLevel.toolboxBlockTypes.map((blockType) => escapeHtml(getBlockDisplayLabel(blockType))).join(", ")}</p>
+        ${currentLevel.moveTowardTargetTypes?.length ? `<p><strong>Move Toward targets:</strong> ${currentLevel.moveTowardTargetTypes.map((value) => escapeHtml(getMoveTowardTargetLabel(value))).join(", ")}</p>` : ""}
+        ${currentLevel.sensorObjectTypes?.length ? `<p><strong>Sensor objects:</strong> ${currentLevel.sensorObjectTypes.map((value) => escapeHtml(getSensorObjectLabel(value))).join(", ")}</p>` : ""}
+        ${currentLevel.sensorRelationTypes?.length ? `<p><strong>Sensor relations:</strong> ${currentLevel.sensorRelationTypes.map((value) => escapeHtml(getSensorRelationLabel(value))).join(", ")}</p>` : ""}
         <p><strong>Human turns:</strong> ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.AUTO_SKIP ? "Auto Skip" : "Wait For Input"}</p>
         <div class="human-turn-toggle">
           <button data-action="set-human-auto-skip" ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.AUTO_SKIP ? "disabled" : ""}>Auto Skip Human</button>

@@ -3,9 +3,9 @@
 **Current Implementation Status (2026-03-31)**
 
 * The project is currently in a playable **Phase 6a prototype** state.
-* The project now includes a playable **Phase 7 MVP** guided flow with two starter levels, pass/fail evaluation, level unlock progression, and Blockly toolbox restriction by challenge.
+* The project now includes a playable **Phase 7 expansion** guided flow with four scaffolded levels, pass/fail evaluation, level unlock progression, and Blockly toolbox restriction by challenge.
 * The codebase now also has a modular `src/` architecture, Vite-based build workflow, command-line rule tests, and Playwright browser smoke tests.
-* Core gameplay, Blockly integration, NPC foundations, and the first guided learning layer are in place, but broader level content, advanced Blockly blocks, save/load, and classroom-facing documentation are still future work.
+* Core gameplay, Blockly integration, NPC foundations, and the first guided learning layer are in place, including a first-run mode chooser, spotlight tutorials, a required `On Each Turn` event block, first one-branch conditional blocks, and a custom level picker popover; broader level content, more advanced Blockly blocks, save/load, and classroom-facing documentation are still future work.
 
 **Phase 1: Specification Document for "Browser Battlegorithms" (Completed)**
 
@@ -110,13 +110,16 @@
   * Implement basic resizability/collapsibility for UI panels.
   * Implement logic for managing available Blockly blocks based on the current level.
   * Design and implement the first 3-4 scaffolded levels as per Spec V1.1, including predefined maps and specific "pass" conditions.
-  * Introduce new Blockly blocks progressively through these levels (e.g., `If enemy is in front`, `If barrier is in front`, `Move Randomly`, initial conditional blocks).
+* Add learner-facing onboarding such as first-run mode choice, spotlight tutorials, level intros/tips, and clear explanation of tutorial-specific constraints.
+* Add a more explicit Blockly execution model for beginners, including a required event block and visible treatment of ignored early-phase code.
+* Replace one-button-per-level navigation with a scalable guided level picker UI.
+* Introduce the first conditional Blockly blocks through guided levels (currently `If enemy is in front`, `If barrier is in front`, and `If I have enemy flag`).
 * **Testing / Verification Expectations:**
   * Add command-line tests for level pass conditions, block-unlock rules, and level configuration loading.
-  * Add browser tests confirming the toolbox changes correctly by level and that UI panels appear/collapse as intended.
+  * Add browser tests confirming the toolbox changes correctly by level, that onboarding overlays behave correctly, and that the guided navigation UI works as intended.
   * Add screenshot baselines for level-specific UI states and narrow/mobile layouts.
   * Perform manual playtests focused on instructional clarity and whether the active challenge is understandable to a student.
-* **Outcome:** A structured learning experience where students are gradually introduced to more complex programming concepts through targeted challenges. A more complete user interface.
+* **Outcome:** A structured learning experience where students are gradually introduced to more complex programming concepts through targeted challenges, explicit onboarding, a more understandable Blockly execution model, and a full 20-level beginner campaign spanning movement, scoring, sensing, helper actions, jump, barrier use, teammate logic, territory checks, and Area Freeze. A more complete user interface.
 
 **Phase 8: Advanced Blockly, More Levels, Save/Load & "Fun" Features**
 

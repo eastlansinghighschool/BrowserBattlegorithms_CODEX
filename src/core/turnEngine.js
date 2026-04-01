@@ -1,6 +1,8 @@
 import {
   ACTIVE_TEAM2_NPC_BEHAVIOR,
   AI_ACTION_TYPES,
+  AREA_FREEZE_DURATION_TURNS,
+  AREA_FREEZE_RADIUS,
   GAME_VIEW_MODES,
   HUMAN_TURN_BEHAVIORS,
   MAIN_GAME_STATES,
@@ -28,6 +30,39 @@ function sync(app) {
   if (typeof app.syncUi === "function") {
     app.syncUi();
   }
+}
+
+function recordRunnerAction(state, runner, actionType) {
+  if (!runner || !actionType) {
+    return;
+  }
+  if (!state.runnerActionHistory[runner.id]) {
+    state.runnerActionHistory[runner.id] = [];
+  }
+  if (!state.runnerActionHistory[runner.id].includes(actionType)) {
+    state.runnerActionHistory[runner.id].push(actionType);
+  }
+}
+
+function applyAreaFreeze(state, actionRunner) {
+  if (state.teamAreaFreezeUsed?.[actionRunner.team]) {
+    return false;
+  }
+
+  let frozeAnyone = false;
+  for (const candidate of state.allRunners) {
+    if (candidate.team === actionRunner.team || candidate.isFrozen) {
+      continue;
+    }
+    const distance = Math.abs(candidate.gridX - actionRunner.gridX) + Math.abs(candidate.gridY - actionRunner.gridY);
+    if (distance <= AREA_FREEZE_RADIUS) {
+      candidate.setFrozen(AREA_FREEZE_DURATION_TURNS);
+      frozeAnyone = true;
+    }
+  }
+
+  state.teamAreaFreezeUsed[actionRunner.team] = true;
+  return frozeAnyone;
 }
 
 export function handlePlayerInput(app, runner, actionData) {
@@ -59,7 +94,7 @@ function planActionForActiveRunner(app, runner) {
     const decision = ACTIVE_TEAM2_NPC_BEHAVIOR === NPC_BEHAVIORS.SIMPLE_TARGET
       ? calculateNpcType1Action(runner, state)
       : calculateNpcType2Action(runner, state);
-    state.queuedActionForCurrentRunner = translateActionDecision(runner, decision);
+    state.queuedActionForCurrentRunner = translateActionDecision(runner, decision, state);
     state.currentTurnState = TURN_STATES.PROCESSING_ACTION;
     return;
   }
@@ -71,12 +106,12 @@ function planActionForActiveRunner(app, runner) {
     aiDecision = { type: AI_ACTION_TYPES.MOVE_FORWARD };
   }
 
-  let queued = translateActionDecision(runner, aiDecision);
+  let queued = translateActionDecision(runner, aiDecision, state);
   if (queued.actionType === AI_ACTION_TYPES.JUMP_FORWARD && !runner.canJump) {
-    queued = translateActionDecision(runner, { type: AI_ACTION_TYPES.STAY_STILL });
+    queued = translateActionDecision(runner, { type: AI_ACTION_TYPES.STAY_STILL }, state);
   }
   if (queued.actionType === AI_ACTION_TYPES.PLACE_BARRIER_FORWARD && (!runner.canPlaceBarrier || runner.activeBarrierId)) {
-    queued = translateActionDecision(runner, { type: AI_ACTION_TYPES.STAY_STILL });
+    queued = translateActionDecision(runner, { type: AI_ACTION_TYPES.STAY_STILL }, state);
   }
 
   state.queuedActionForCurrentRunner = queued;
@@ -157,6 +192,7 @@ function handleActionCompletion(app, completedRunner) {
 function executeQueuedAction(app, actionRunner, queuedAction) {
   const { state } = app;
   const actionType = queuedAction.actionType;
+  recordRunnerAction(state, actionRunner, actionType);
   let targetGridX = queuedAction.targetGridX;
   let targetGridY = queuedAction.targetGridY;
   let actionResolvedAndAnimating = false;
@@ -201,6 +237,11 @@ function executeQueuedAction(app, actionRunner, queuedAction) {
         actionRunner.activeBarrierId = barrier.id;
         actionRunner.canPlaceBarrier = false;
       }
+      actionCompletedImmediately = true;
+      break;
+    }
+    case AI_ACTION_TYPES.FREEZE_OPPONENTS: {
+      applyAreaFreeze(state, actionRunner);
       actionCompletedImmediately = true;
       break;
     }
