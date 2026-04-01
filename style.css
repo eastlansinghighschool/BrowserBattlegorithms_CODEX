@@ -1,0 +1,190 @@
+body {
+  font-family: Georgia, "Times New Roman", serif;
+  margin: 0;
+  background:
+    radial-gradient(circle at top, #fff5d6 0%, #f4ecd7 35%, #d9e4ec 100%);
+  color: #1e2b33;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+
+header {
+  width: 100%;
+  background: linear-gradient(90deg, #1f4e5f, #3a7d63);
+  color: white;
+  padding: 12px 0;
+  text-align: center;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+#game-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 20px;
+  padding: 10px 16px 24px;
+  width: min(1240px, 96%);
+}
+
+#simulation-region {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#canvas-container {
+  border: 3px solid #24404a;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  margin-bottom: 12px;
+  background: white;
+}
+
+#instructions,
+#blockly-region {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(36, 64, 74, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+#instructions {
+  padding: 14px;
+  text-align: center;
+  width: calc(12 * 50px);
+}
+
+#instructions button,
+.level-panel-header button,
+.level-mode-toggle button,
+.level-list button,
+.level-actions button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: #2f7a4d;
+  color: white;
+  transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+}
+
+#instructions button:hover,
+.level-panel-header button:hover,
+.level-mode-toggle button:hover,
+.level-list button:hover,
+.level-actions button:hover {
+  transform: translateY(-1px);
+  background: #25663f;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#blockly-region {
+  padding: 15px;
+  width: 40%;
+  min-width: 300px;
+}
+
+#blockly-region h2 {
+  text-align: center;
+  margin-top: 0;
+}
+
+#level-panel {
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 12px;
+  text-align: left;
+  background: linear-gradient(180deg, #fbf9ef, #eef6fa);
+  border: 1px solid rgba(36, 64, 74, 0.14);
+}
+
+.level-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.level-mode-toggle,
+.level-actions,
+.level-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.level-mode-toggle {
+  margin-bottom: 12px;
+}
+
+.level-list {
+  margin-bottom: 12px;
+}
+
+.level-button {
+  background: #3b6f90;
+}
+
+.level-button-current {
+  background: #b85f3c;
+}
+
+.level-summary h3 {
+  margin: 0 0 8px;
+}
+
+.level-summary p {
+  margin: 6px 0;
+  line-height: 1.35;
+}
+
+.level-result {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.level-result.success {
+  background: rgba(47, 122, 77, 0.12);
+  color: #1e6b3d;
+}
+
+.level-result.failure {
+  background: rgba(184, 95, 60, 0.12);
+  color: #8c3d22;
+}
+
+.blockly-area-read-only {
+  opacity: 0.65;
+  transition: opacity 0.3s ease-in-out;
+}
+
+@media (max-width: 900px) {
+  #game-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #blockly-region {
+    width: min(720px, 92%);
+    margin-top: 12px;
+  }
+
+  #simulation-region {
+    width: 100%;
+    align-items: center;
+  }
+
+  #instructions {
+    width: min(600px, 92vw);
+  }
+}

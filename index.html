@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Battlegorithms - Phase 7 MVP</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <header>
+      <h1>Browser Battlegorithms - Phase 7 MVP</h1>
+    </header>
+    <div id="game-container">
+      <main id="simulation-region">
+        <div id="canvas-container"></div>
+        <div id="instructions">
+          <button id="playResetButton" style="padding: 10px 20px; font-size: 16px;">Play</button>
+          <div id="game-controls" style="margin-top: 10px; padding: 10px; background-color: #fff; border-radius: 8px; text-align: center;">
+            <label for="speedSlider">Game Speed:</label>
+            <input type="range" id="speedSlider" min="1" max="20" value="10" style="vertical-align: middle;">
+            <span id="speedValue" style="margin-left: 10px;">Normal</span>
+            <p id="scoreDisplay" style="margin-top:10px; font-weight: bold;">Turn: 1 | Scores: T1: 0 - T2: 0 (Win at 2)</p>
+          </div>
+          <div id="level-panel"></div>
+          <p>Human (🏃🏾‍♀️‍➡️): Use WASD Keys to move. B: barrier, J: jump, X: stay still.</p>
+          <p>Program the AI Ally (🏃🏿‍♂️‍➡️) using the Blockly blocks.</p>
+        </div>
+      </main>
+      <aside id="blockly-region">
+        <h2>AI Ally Program</h2>
+        <div id="blocklyDiv" style="height: 400px; width: 100%;"></div>
+      </aside>
+    </div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
