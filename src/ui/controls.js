@@ -6,7 +6,7 @@ import {
   P2_KEY_BINDINGS
 } from "../config/constants.js";
 import { setBlocklyEditable } from "../ai/blockly/workspace.js";
-import { enterFreePlay, startLevel, resetCurrentLevel } from "../core/levels.js";
+import { enterFreePlay, goToNextLevel, startLevel, resetCurrentLevel } from "../core/levels.js";
 import { resetGameToSetup, startGame } from "../core/setup.js";
 import { handlePlayerInput } from "../core/turnEngine.js";
 
@@ -20,6 +20,8 @@ export function getAnimationSpeedFactorFromSliderValue(sliderValue) {
 export function bindControls(app) {
   const speedSlider = document.getElementById("speedSlider");
   const speedValueDisplay = document.getElementById("speedValue");
+  const controlsPanel = document.getElementById("game-controls");
+  const instructionsPanel = document.getElementById("instructions");
   if (speedSlider && speedValueDisplay) {
     const updateSpeed = () => {
       app.state.animationSpeedFactor = getAnimationSpeedFactorFromSliderValue(speedSlider.value);
@@ -30,7 +32,17 @@ export function bindControls(app) {
     updateSpeed();
   }
 
+  app.hooks.updateControlsVisibility = () => {
+    if (instructionsPanel) {
+      instructionsPanel.style.display = app.state.showModePicker ? "none" : "";
+    }
+    if (controlsPanel) {
+      controlsPanel.style.display = app.state.showModePicker ? "none" : "";
+    }
+  };
+
   const playResetButton = document.getElementById("playResetButton");
+  const nextLevelButton = document.getElementById("nextLevelButton");
   if (playResetButton) {
     playResetButton.addEventListener("click", () => {
       if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
@@ -53,10 +65,20 @@ export function bindControls(app) {
       app.syncUi();
     });
   }
+
+  if (nextLevelButton) {
+    nextLevelButton.addEventListener("click", () => {
+      goToNextLevel(app);
+      app.syncUi();
+    });
+  }
 }
 
 export function handleKeyInput(app, rawKey) {
   const state = app.state;
+  if (state.activeTutorial) {
+    return false;
+  }
   if (state.mainGameState !== MAIN_GAME_STATES.RUNNING || state.currentTurnState === "GAME_OVER") {
     return false;
   }

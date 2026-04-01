@@ -3,6 +3,10 @@ export function updateScoreDisplay(app) {
   if (!scoreElement) {
     return;
   }
+  if (app.state.showModePicker) {
+    scoreElement.textContent = "";
+    return;
+  }
   const { currentTurnNumber, teamScores, pointsToWin, currentModeView, activeLevelResult } = app.state;
   let prefix = `Turn: ${currentTurnNumber} | Scores: Team 1: ${teamScores[1]} - Team 2: ${teamScores[2]} (Win at ${pointsToWin})`;
   if (currentModeView === "GUIDED_LEVELS") {

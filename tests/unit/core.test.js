@@ -4,6 +4,7 @@ import {
   BLOCK_TYPES,
   GAME_MODES,
   GAME_VIEW_MODES,
+  HUMAN_TURN_BEHAVIORS,
   LEVEL_RESULT,
   LEVEL_STATUS
 } from "../../src/config/constants.js";
@@ -128,6 +129,14 @@ test("guided mode initializes with level 1 available and level 2 locked", () => 
   assert.equal(snapshot.currentLevelId, "move-to-target");
   assert.equal(snapshot.levelProgress["move-to-target"], LEVEL_STATUS.AVAILABLE);
   assert.equal(snapshot.levelProgress["reach-enemy-flag"], LEVEL_STATUS.LOCKED);
+  assert.equal(snapshot.humanTurnBehavior, HUMAN_TURN_BEHAVIORS.AUTO_SKIP);
+});
+
+test("starter levels include onboarding copy and tutorial steps", () => {
+  const [firstLevel, secondLevel] = getLevelDefinitions();
+  assert.ok(firstLevel.introText.includes("frozen"));
+  assert.ok(firstLevel.tutorialSteps.length >= 3);
+  assert.ok(secondLevel.tutorialSteps.some((step) => step.body.includes("Move Backward")));
 });
 
 test("guided toolbox restriction reflects each level's allowed blocks", () => {

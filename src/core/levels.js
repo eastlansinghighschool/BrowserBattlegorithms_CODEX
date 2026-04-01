@@ -2,6 +2,7 @@ import {
   DEFAULT_GAME_MODE,
   DEFAULT_MAP_KEY,
   GAME_VIEW_MODES,
+  HUMAN_TURN_BEHAVIORS,
   LEVEL_RESULT,
   LEVEL_STATUS,
   MAIN_GAME_STATES,
@@ -76,6 +77,7 @@ export function initializeLevelState(app) {
   state.levelAttemptCount = 0;
   state.lastLevelResultReason = null;
   state.currentToolboxBlockTypes = [];
+  state.humanTurnBehavior = HUMAN_TURN_BEHAVIORS.AUTO_SKIP;
   const currentLevel = findCurrentLevel(state);
   if (currentLevel) {
     applyLevelToState(state, currentLevel);
@@ -90,12 +92,18 @@ export function getLevelStateSnapshot(app) {
   const { state } = app;
   return {
     currentModeView: state.currentModeView,
+    showModePicker: state.showModePicker,
     currentLevelId: state.currentLevelId,
     currentLevelStatus: state.currentLevelStatus,
     activeLevelResult: state.activeLevelResult,
     levelAttemptCount: state.levelAttemptCount,
     lastLevelResultReason: state.lastLevelResultReason,
-    levelProgress: { ...state.levelProgress }
+    levelProgress: { ...state.levelProgress },
+    humanTurnBehavior: state.humanTurnBehavior,
+    activeTutorial: state.activeTutorial ? {
+      key: state.activeTutorial.key,
+      currentIndex: state.activeTutorial.currentIndex
+    } : null
   };
 }
 
@@ -110,6 +118,7 @@ export function enterGuidedMode(app) {
   state.activeLevelResult = LEVEL_RESULT.NONE;
   state.lastLevelResultReason = null;
   state.currentLevelStatus = state.levelProgress[state.currentLevelId];
+  state.humanTurnBehavior = currentLevel?.humanTurnBehavior || HUMAN_TURN_BEHAVIORS.AUTO_SKIP;
   if (typeof app.hooks.onGuidedLevelSelected === "function" && currentLevel) {
     app.hooks.onGuidedLevelSelected(currentLevel);
   }
@@ -124,6 +133,7 @@ export function enterFreePlay(app) {
   state.pointsToWin = 2;
   state.autoStayHumanRunnerIds = [];
   state.displayRunnerOverrides = null;
+  state.humanTurnBehavior = HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT;
   state.activeLevelResult = LEVEL_RESULT.NONE;
   state.lastLevelResultReason = null;
   initializeDisplayState(app);
@@ -147,6 +157,7 @@ export function startLevel(app, levelId = app.state.currentLevelId) {
   state.lastLevelResultReason = null;
 
   applyLevelToState(state, level);
+  state.humanTurnBehavior = level.humanTurnBehavior || HUMAN_TURN_BEHAVIORS.AUTO_SKIP;
   initializeMatch(app);
   applyRunnerOverrides(state, level.setupOverrides);
   state.mainGameState = MAIN_GAME_STATES.RUNNING;
@@ -161,6 +172,10 @@ export function resetCurrentLevel(app, reason = "manual_reset") {
   state.lastLevelResultReason = reason;
   enterGuidedMode(app);
   return getCurrentLevel(app);
+}
+
+export function setGuidedHumanTurnBehavior(app, behavior) {
+  app.state.humanTurnBehavior = behavior;
 }
 
 export function completeLevel(app, result, reason) {
@@ -179,6 +194,9 @@ export function completeLevel(app, result, reason) {
   }
 
   state.currentLevelStatus = state.levelProgress[state.currentLevelId];
+  if (typeof app.hooks.onLevelEnded === "function") {
+    app.hooks.onLevelEnded(result, reason);
+  }
 }
 
 export function goToNextLevel(app) {
@@ -192,6 +210,14 @@ export function goToNextLevel(app) {
   app.state.lastLevelResultReason = null;
   enterGuidedMode(app);
   return nextLevelId;
+}
+
+export function getNextAvailableLevelId(app) {
+  const nextLevelId = getNextLevelId(app.state, app.state.currentLevelId);
+  if (!nextLevelId) {
+    return null;
+  }
+  return app.state.levelProgress[nextLevelId] === LEVEL_STATUS.LOCKED ? null : nextLevelId;
 }
 
 export function evaluateLevelProgress(app) {

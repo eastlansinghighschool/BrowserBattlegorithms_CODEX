@@ -58,6 +58,14 @@ header {
   width: calc(12 * 50px);
 }
 
+#primary-level-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 #instructions button,
 .level-panel-header button,
 .level-mode-toggle button,
@@ -115,8 +123,7 @@ button:disabled {
 }
 
 .level-mode-toggle,
-.level-actions,
-.level-list {
+.level-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -126,16 +133,72 @@ button:disabled {
   margin-bottom: 12px;
 }
 
-.level-list {
+.level-picker {
+  position: relative;
   margin-bottom: 12px;
 }
 
-.level-button {
+.level-picker-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   background: #3b6f90;
+  text-align: left;
 }
 
-.level-button-current {
+.level-picker-trigger-label,
+.level-picker-trigger-meta {
+  pointer-events: none;
+}
+
+.level-picker-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 10px;
+  border-radius: 14px;
+  background: #fffdf7;
+  border: 1px solid rgba(36, 64, 74, 0.18);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+.level-picker-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  align-items: start;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: #2f7a4d;
+  text-align: left;
+}
+
+.level-picker-item:last-child {
+  margin-bottom: 0;
+}
+
+.level-picker-item-current {
   background: #b85f3c;
+}
+
+.level-picker-item-title {
+  font-weight: 700;
+}
+
+.level-picker-item-meta {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.level-picker-item-description {
+  grid-column: 1 / -1;
+  font-size: 0.92rem;
+  opacity: 0.9;
 }
 
 .level-summary h3 {
@@ -145,6 +208,24 @@ button:disabled {
 .level-summary p {
   margin: 6px 0;
   line-height: 1.35;
+}
+
+.level-intro {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(58, 125, 99, 0.1);
+}
+
+.level-tips ul {
+  margin: 8px 0 0 18px;
+  padding: 0;
+}
+
+.human-turn-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
 }
 
 .level-result {
@@ -166,6 +247,77 @@ button:disabled {
 .blockly-area-read-only {
   opacity: 0.65;
   transition: opacity 0.3s ease-in-out;
+}
+
+#tutorial-overlay {
+  display: none;
+}
+
+#tutorial-overlay.tutorial-overlay-active {
+  display: block;
+}
+
+.tutorial-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 20, 28, 0.64);
+  z-index: 1000;
+}
+
+.tutorial-spotlight {
+  position: fixed;
+  z-index: 1001;
+  border: 3px solid #ffe48c;
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px rgba(12, 20, 28, 0.28);
+  pointer-events: none;
+}
+
+.tutorial-card {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: min(380px, calc(100vw - 32px));
+  padding: 18px;
+  border-radius: 16px;
+  background: #fffdf7;
+  color: #1f2a30;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+  z-index: 1002;
+}
+
+.tutorial-card-centered {
+  right: auto;
+  left: 50%;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+
+.tutorial-card h3 {
+  margin: 0 0 8px;
+}
+
+.tutorial-step-count {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: #51606b;
+}
+
+.tutorial-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.tutorial-actions-stacked {
+  justify-content: stretch;
+  flex-direction: column;
+}
+
+.tutorial-actions-stacked button {
+  width: 100%;
 }
 
 @media (max-width: 900px) {

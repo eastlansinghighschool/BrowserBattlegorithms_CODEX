@@ -3,6 +3,7 @@ import {
   DEFAULT_GAME_MODE,
   DEFAULT_MAP_KEY,
   GAME_VIEW_MODES,
+  HUMAN_TURN_BEHAVIORS,
   LEVEL_RESULT,
   LEVEL_STATUS,
   MAIN_GAME_STATES,
@@ -36,7 +37,12 @@ export function createInitialState() {
     levelAttemptCount: 0,
     lastLevelResultReason: null,
     currentToolboxBlockTypes: [],
-    autoStayHumanRunnerIds: []
+    autoStayHumanRunnerIds: [],
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    tutorialSeen: {},
+    activeTutorial: null,
+    spotlightRect: null,
+    showModePicker: true
   };
 }
 

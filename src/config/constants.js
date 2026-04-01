@@ -63,7 +63,13 @@ export const LEVEL_RESULT = {
   NONE: "NONE"
 };
 
+export const HUMAN_TURN_BEHAVIORS = {
+  AUTO_SKIP: "AUTO_SKIP",
+  WAIT_FOR_INPUT: "WAIT_FOR_INPUT"
+};
+
 export const BLOCK_TYPES = {
+  ON_EACH_TURN: "battlegorithms_on_each_turn",
   MOVE_FORWARD: "battlegorithms_move_forward",
   MOVE_BACKWARD: "battlegorithms_move_backward",
   MOVE_UP_SCREEN: "battlegorithms_move_up_screen",

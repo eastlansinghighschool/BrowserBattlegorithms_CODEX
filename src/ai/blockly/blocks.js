@@ -1,6 +1,12 @@
 import * as Blockly from "blockly";
-import { javascriptGenerator } from "blockly/javascript";
 import { AI_ACTION_TYPES, BLOCK_TYPES, GAME_VIEW_MODES } from "../../config/constants.js";
+
+const EVENT_BLOCK_CONFIG = {
+  category: "Events",
+  color: 35,
+  label: "On Each Turn",
+  tooltip: "The ally checks the block underneath this every time it gets a turn."
+};
 
 const BLOCK_LIBRARY = {
   [BLOCK_TYPES.MOVE_FORWARD]: {
@@ -61,6 +67,17 @@ export function registerBattleBlocklyBlocks() {
     return;
   }
 
+  Blockly.Blocks[BLOCK_TYPES.ON_EACH_TURN] = {
+    init() {
+      this.appendDummyInput().appendField(EVENT_BLOCK_CONFIG.label);
+      this.setNextStatement(true, null);
+      this.setColour(EVENT_BLOCK_CONFIG.color);
+      this.setTooltip(EVENT_BLOCK_CONFIG.tooltip);
+      this.setDeletable(false);
+      this.setMovable(false);
+    }
+  };
+
   Object.entries(BLOCK_LIBRARY).forEach(([type, config]) => {
     Blockly.Blocks[type] = {
       init() {
@@ -71,8 +88,6 @@ export function registerBattleBlocklyBlocks() {
         this.setTooltip(config.tooltip);
       }
     };
-
-    javascriptGenerator.forBlock[type] = () => `__bbaSetRunnerAction('${config.actionType}');\n`;
   });
 
   registered = true;
@@ -84,6 +99,10 @@ export function getFullToolboxBlockTypes() {
 
 export function getBlockLibrary() {
   return BLOCK_LIBRARY;
+}
+
+export function getActionTypeForBlockType(blockType) {
+  return BLOCK_LIBRARY[blockType]?.actionType || null;
 }
 
 export function getToolboxBlockTypesForMode(app, currentLevel) {

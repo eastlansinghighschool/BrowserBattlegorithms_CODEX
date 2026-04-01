@@ -2,6 +2,7 @@ import {
   ACTIVE_TEAM2_NPC_BEHAVIOR,
   AI_ACTION_TYPES,
   GAME_VIEW_MODES,
+  HUMAN_TURN_BEHAVIORS,
   MAIN_GAME_STATES,
   NPC_BEHAVIORS,
   TURN_STATES
@@ -296,7 +297,11 @@ export function processTurnActions(app, p) {
     }
 
     if (runner.isHumanControlled) {
-      if (state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS && state.autoStayHumanRunnerIds.includes(runner.id)) {
+      if (
+        state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS &&
+        state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.AUTO_SKIP &&
+        state.autoStayHumanRunnerIds.includes(runner.id)
+      ) {
         handlePlayerInput(app, runner, { type: AI_ACTION_TYPES.STAY_STILL });
       }
       return;
