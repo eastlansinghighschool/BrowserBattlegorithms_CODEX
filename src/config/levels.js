@@ -2,6 +2,7 @@ import {
   BLOCK_TYPES,
   GAME_MODES,
   HUMAN_TURN_BEHAVIORS,
+  UNLOCK_ALL_GUIDED_LEVELS_FOR_TESTING,
   LEVEL_STATUS,
   MOVE_TOWARD_TARGETS,
   SENSOR_OBJECT_TYPES,
@@ -11,6 +12,211 @@ import {
 const STARTER_EVENT_XML = `
 <xml xmlns="https://developers.google.com/blockly/xml">
   <block type="battlegorithms_on_each_turn" x="24" y="24"></block>
+</xml>
+`.trim();
+
+const SCORE_SWITCH_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_have_enemy_flag_else">
+        <statement name="DO">
+          <block type="battlegorithms_move_backward"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_forward"></block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const BARRIER_DETOUR_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_barrier_in_front_else">
+        <statement name="DO">
+          <block type="battlegorithms_move_down_screen"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_forward"></block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const SENSOR_BARRIER_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_sensor_matches_else">
+        <field name="OBJECT">BARRIER</field>
+        <field name="RELATION">DIRECTLY_IN_FRONT</field>
+        <statement name="DO">
+          <block type="battlegorithms_move_down_screen"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_forward"></block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const FIND_HUMAN_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_sensor_matches_else">
+        <field name="OBJECT">HUMAN_RUNNER</field>
+        <field name="RELATION">ANYWHERE_ABOVE</field>
+        <statement name="DO">
+          <block type="battlegorithms_move_up_screen"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_if_sensor_matches_else">
+            <field name="OBJECT">HUMAN_RUNNER</field>
+            <field name="RELATION">ANYWHERE_FORWARD</field>
+            <statement name="DO">
+              <block type="battlegorithms_move_forward"></block>
+            </statement>
+            <statement name="ELSE">
+              <block type="battlegorithms_move_down_screen"></block>
+            </statement>
+          </block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const BRING_IT_HOME_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_have_enemy_flag_else">
+        <statement name="DO">
+          <block type="battlegorithms_move_toward">
+            <field name="TARGET">MY_BASE</field>
+          </block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_toward">
+            <field name="TARGET">ENEMY_FLAG</field>
+          </block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const ENEMY_NEARBY_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_sensor_matches_else">
+        <field name="OBJECT">ENEMY_RUNNER</field>
+        <field name="RELATION">WITHIN_2</field>
+        <statement name="DO">
+          <block type="battlegorithms_move_up_screen"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_forward"></block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const JUMP_THE_GAP_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_jump_forward"></block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const JUMP_IF_READY_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_can_jump_else">
+        <statement name="DO">
+          <block type="battlegorithms_jump_forward"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_forward"></block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const STAY_STILL_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_sensor_matches_else">
+        <field name="OBJECT">BARRIER</field>
+        <field name="RELATION">DIRECTLY_IN_FRONT</field>
+        <statement name="DO">
+          <block type="battlegorithms_stay_still"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_forward"></block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const RELAY_RACE_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_teammate_has_flag_else">
+        <statement name="DO">
+          <block type="battlegorithms_move_toward">
+            <field name="TARGET">HUMAN_RUNNER</field>
+          </block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_forward"></block>
+        </statement>
+      </block>
+    </next>
+  </block>
+</xml>
+`.trim();
+
+const FREEZE_THE_LANE_DEMO_XML = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="battlegorithms_on_each_turn" x="24" y="24">
+    <next>
+      <block type="battlegorithms_if_area_freeze_ready_else">
+        <statement name="DO">
+          <block type="battlegorithms_freeze_opponents"></block>
+        </statement>
+        <statement name="ELSE">
+          <block type="battlegorithms_move_toward">
+            <field name="TARGET">ENEMY_FLAG</field>
+          </block>
+        </statement>
+      </block>
+    </next>
+  </block>
 </xml>
 `.trim();
 
@@ -67,6 +273,142 @@ const AREA_FREEZE_BLOCKS = [
   BLOCK_TYPES.IF_AREA_FREEZE_READY,
   BLOCK_TYPES.IF_AREA_FREEZE_READY_ELSE
 ];
+
+const ADVANCED_BOOLEAN_WRAPPERS = [
+  BLOCK_TYPES.IF_BOOLEAN,
+  BLOCK_TYPES.IF_BOOLEAN_ELSE
+];
+
+const ADVANCED_BOOLEAN_VALUES = [
+  BLOCK_TYPES.BOOLEAN_SENSOR_MATCHES,
+  BLOCK_TYPES.BOOLEAN_HAVE_ENEMY_FLAG,
+  BLOCK_TYPES.BOOLEAN_CAN_JUMP,
+  BLOCK_TYPES.BOOLEAN_CAN_PLACE_BARRIER,
+  BLOCK_TYPES.BOOLEAN_AREA_FREEZE_READY,
+  BLOCK_TYPES.BOOLEAN_TEAMMATE_HAS_FLAG,
+  BLOCK_TYPES.BOOLEAN_ON_MY_SIDE,
+  BLOCK_TYPES.BOOLEAN_ON_ENEMY_SIDE,
+  BLOCK_TYPES.LOGIC_AND,
+  BLOCK_TYPES.LOGIC_OR,
+  BLOCK_TYPES.LOGIC_NOT,
+  BLOCK_TYPES.VALUE_COMPARE
+];
+
+const ADVANCED_NUMBER_VALUES = [
+  BLOCK_TYPES.VALUE_NUMBER,
+  BLOCK_TYPES.VALUE_RUNNER_INDEX,
+  BLOCK_TYPES.VALUE_DISTANCE_TO_TARGET,
+  BLOCK_TYPES.VALUE_RANDOM_ROLL,
+  BLOCK_TYPES.VALUE_PLAY_DIRECTION
+];
+
+const ADVANCED_ALL_BLOCKS = [
+  ...ADVANCED_BOOLEAN_WRAPPERS,
+  ...ADVANCED_BOOLEAN_VALUES,
+  ...ADVANCED_NUMBER_VALUES
+];
+
+function getSemanticRoleForTeamId(teamId) {
+  return Number(teamId) === 1 ? "player" : "opponent";
+}
+
+function getDefaultPlayDirectionForRole(role) {
+  return role === "player" ? 1 : -1;
+}
+
+function deriveRunnerSlotFromId(runnerId) {
+  if (runnerId.includes("HumanP")) {
+    return "human";
+  }
+  if (runnerId.includes("AI_AllyP") && runnerId.endsWith("_3")) {
+    return "ally3";
+  }
+  if (runnerId.includes("AI_AllyP") && runnerId.endsWith("_2")) {
+    return "ally2";
+  }
+  if (runnerId.includes("AI_Ally")) {
+    return "ally";
+  }
+  if (runnerId.includes("Npc1")) {
+    return "npc1";
+  }
+  if (runnerId.includes("Npc2")) {
+    return "npc2";
+  }
+  if (runnerId.includes("Npc3")) {
+    return "npc3";
+  }
+  throw new Error(`Unsupported runner id in level setup: ${runnerId}`);
+}
+
+function normalizeLegacyLevelSetup(setupOverrides = {}) {
+  if (setupOverrides.teams) {
+    const normalizedTeams = structuredClone(setupOverrides.teams);
+    const playerDirection = normalizedTeams.player?.playDirection ?? getDefaultPlayDirectionForRole("player");
+    const opponentDirection = normalizedTeams.opponent?.playDirection ?? getDefaultPlayDirectionForRole("opponent");
+
+    if (playerDirection === opponentDirection) {
+      throw new Error("Level setup requires player and opponent teams to use different playDirection values.");
+    }
+
+    return {
+      pointsToWin: setupOverrides.pointsToWin || 1,
+      autoStayHumanRunnerIds: [...(setupOverrides.autoStayHumanRunnerIds || [])],
+      teams: {
+        player: {
+          playDirection: playerDirection,
+          runners: structuredClone(normalizedTeams.player?.runners || [])
+        },
+        opponent: {
+          playDirection: opponentDirection,
+          runners: structuredClone(normalizedTeams.opponent?.runners || [])
+        }
+      },
+      flags: structuredClone(setupOverrides.flags || {}),
+      barriers: structuredClone(setupOverrides.barriers || [])
+    };
+  }
+
+  const teams = {
+    player: {
+      playDirection: getDefaultPlayDirectionForRole("player"),
+      runners: []
+    },
+    opponent: {
+      playDirection: getDefaultPlayDirectionForRole("opponent"),
+      runners: []
+    }
+  };
+
+  for (const [runnerId, override] of Object.entries(setupOverrides.runnerOverrides || {})) {
+    const teamId = Number(runnerId.split("_")[1]);
+    const role = getSemanticRoleForTeamId(teamId);
+    const playDirection = override.playDirection ?? teams[role].playDirection;
+    if (teams[role].runners.length > 0 && teams[role].playDirection !== playDirection) {
+      throw new Error(`Level setup mixes playDirection values within ${role} team.`);
+    }
+    teams[role].playDirection = playDirection;
+    teams[role].runners.push({
+      slot: deriveRunnerSlotFromId(runnerId),
+      ...override
+    });
+  }
+
+  const flags = Object.fromEntries(
+    Object.entries(setupOverrides.flagOverrides || {}).map(([teamId, override]) => [
+      getSemanticRoleForTeamId(teamId),
+      { ...override }
+    ])
+  );
+
+  return {
+    pointsToWin: setupOverrides.pointsToWin || 1,
+    autoStayHumanRunnerIds: [...(setupOverrides.autoStayHumanRunnerIds || [])],
+    teams,
+    flags,
+    barriers: structuredClone(setupOverrides.barriers || [])
+  };
+}
 
 const LEVEL_DEFINITIONS = [
   {
@@ -185,7 +527,7 @@ const LEVEL_DEFINITIONS = [
     introText: "Now the ally needs two different ideas: go get the flag, then head home once it has it.",
     tips: [
       "The ally scores by carrying the enemy flag back into the blue home area.",
-      "You can use either If I Have Enemy Flag or the new If / Else version to switch plans after pickup.",
+      "You can use either If I Have Enemy Flag or the new else version to switch plans after pickup.",
       "Only the first move the ally reaches each turn is the one it will perform.",
       "The practice enemies are still frozen so you can focus on the scoring idea."
     ],
@@ -223,13 +565,16 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-3-condition",
         title: "New Blockly Tool: If I Have Enemy Flag",
-        body: "This level adds two versions of the flag check. You can use the simple If block, or the If / Else block to choose one move before pickup and another after pickup.",
-        targetSelector: "#blockly-region"
+        body: "This level adds two versions of the flag check. You can use the simple If block, or the else version to choose one move before pickup and another after pickup.",
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: SCORE_SWITCH_DEMO_XML,
+        demoTitle: "Example flag switch",
+        demoCaption: "Before pickup, move out toward the flag. After pickup, switch to the homeward move."
       },
       {
         id: "level-3-first-action",
         title: "Only The First Move Runs",
-        body: "Each ally turn, the game follows your blocks until it reaches the first move to perform. That means a smart setup can work with either If or If / Else.",
+        body: "Each ally turn, the game follows your blocks until it reaches the first move to perform. That means a smart setup can work with either If or the else version.",
         targetSelector: "#blockly-region"
       }
     ],
@@ -251,7 +596,7 @@ const LEVEL_DEFINITIONS = [
     introText: "The direct lane is blocked now. Your ally needs a backup move when the way forward is not clear.",
     tips: [
       "The obstacle in front of the ally is intentional.",
-      "You can use either If Barrier Is In Front or the new If / Else version.",
+      "You can use either If Barrier Is In Front or the new else version.",
       "This level is about choosing between a detour move and a normal forward move.",
       "You still only get one action each ally turn."
     ],
@@ -283,13 +628,16 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-4-condition",
         title: "New Blockly Tool: If Barrier Is In Front",
-        body: "This level adds two versions of the barrier check. You can use the simple If block, or the If / Else block to choose a detour move when blocked and a forward move when clear.",
-        targetSelector: "#blockly-region"
+        body: "This level adds two versions of the barrier check. You can use the simple If block, or the else version to choose a detour move when blocked and a forward move when clear.",
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: BARRIER_DETOUR_DEMO_XML,
+        demoTitle: "Example detour program",
+        demoCaption: "When the path ahead is blocked, this program dips down. Otherwise it keeps moving forward."
       },
       {
         id: "level-4-first-action",
         title: "The First Move Reached Is The One That Runs",
-        body: "Each turn, the ally follows your blocks until it reaches the first move to perform. The If / Else version can make that choice easier to see.",
+        body: "Each turn, the ally follows your blocks until it reaches the first move to perform. The else version can make that choice easier to see.",
         targetSelector: "#blockly-region"
       }
     ],
@@ -351,8 +699,8 @@ const LEVEL_DEFINITIONS = [
       runnerOverrides: {
         runner_1_HumanP1: { gridX: 10, gridY: 1, playDirection: -1 },
         runner_1_AI_AllyP1: { gridX: 10, gridY: 4, playDirection: -1 },
-        runner_2_Npc1: { gridX: 1, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 },
-        runner_2_Npc2: { gridX: 1, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
+        runner_2_Npc1: { gridX: 1, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999, playDirection: 1 },
+        runner_2_Npc2: { gridX: 1, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999, playDirection: 1 }
       }
     }
   },
@@ -363,7 +711,7 @@ const LEVEL_DEFINITIONS = [
     introText: "Now the sensing system becomes more flexible. The same block shape can check different objects and different relations.",
     tips: [
       "In this level, the sensor block is only set up for barriers directly in front.",
-      "You can use either the simple sensor If block or the If / Else version.",
+      "You can use either the simple sensor If block or the else version.",
       "This is the first step toward a more flexible sensing language."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
@@ -387,7 +735,10 @@ const LEVEL_DEFINITIONS = [
         id: "level-6-generic-sensor",
         title: "One Block Shape, Many Sensor Ideas",
         body: "The new sensor block lets you pick what to look for and how to describe its position. Here it is focused on a barrier directly in front.",
-        targetSelector: "#blockly-region"
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: SENSOR_BARRIER_DEMO_XML,
+        demoTitle: "Example sensor branch",
+        demoCaption: "This version uses the new generic sensor block to detect a barrier directly in front, then detours only when needed."
       },
       {
         id: "level-6-barrier",
@@ -468,6 +819,7 @@ const LEVEL_DEFINITIONS = [
     introText: "Now the sensor can describe where a target is anywhere on the board, not just one square away.",
     tips: [
       "Use the human runner as the sensed object.",
+      "The highlighted support square next to the human is the goal, not the occupied human cell.",
       "Anywhere forward and anywhere above are especially helpful here.",
       "This is a good level for chaining several sensor checks in order."
     ],
@@ -486,7 +838,7 @@ const LEVEL_DEFINITIONS = [
     winCondition: {
       type: "runner_reaches_cell",
       runnerId: "runner_1_AI_AllyP1",
-      targetCell: { x: 6, y: 2 }
+      targetCell: { x: 5, y: 2 }
     },
     failureCondition: {
       type: "turn_limit_exceeded",
@@ -496,8 +848,11 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-8-human",
         title: "Use A Sensor To Find The Human",
-        body: "The sensor block can now look for the human runner and describe whether that runner is forward, behind, above, or below.",
-        targetSelector: "#blockly-region"
+        body: "The sensor block can now look for the human runner and describe whether that runner is forward, behind, above, or below. Your goal is to guide the ally to the marked support square beside the human.",
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: FIND_HUMAN_DEMO_XML,
+        demoTitle: "Example support-route program",
+        demoCaption: "This pattern lines up with the human first, then moves forward into the marked support square beside them."
       },
       {
         id: "level-8-axes",
@@ -514,7 +869,12 @@ const LEVEL_DEFINITIONS = [
         runner_1_AI_AllyP1: { gridX: 1, gridY: 5 },
         runner_2_Npc1: { gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 },
         runner_2_Npc2: { gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
-      }
+      },
+      barriers: [
+        { gridX: 6, gridY: 1, ownerRunnerId: "level_find_human_barrier_1" },
+        { gridX: 7, gridY: 2, ownerRunnerId: "level_find_human_barrier_2" },
+        { gridX: 6, gridY: 3, ownerRunnerId: "level_find_human_barrier_3" }
+      ]
     }
   },
   {
@@ -582,7 +942,8 @@ const LEVEL_DEFINITIONS = [
     introText: "This level is about you, not the Blockly ally. Move the human runner with the keyboard and try at least one special action before reaching the goal.",
     tips: [
       "Use W A S D to move the human runner on screen.",
-      "Press F to jump, B to place a barrier, and X to stay still.",
+      "Press J or F to jump, B to place a barrier, and X to stay still.",
+      "The goal only counts after you have used at least one special action first.",
       "Blockly still exists beside the board, but this lesson is teaching direct player control."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
@@ -602,7 +963,7 @@ const LEVEL_DEFINITIONS = [
     },
     failureCondition: {
       type: "turn_limit_exceeded",
-      maxTurns: 12
+      maxTurns: 200
     },
     tutorialSteps: [
       {
@@ -614,13 +975,13 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-10-human-keys",
         title: "Keyboard Controls",
-        body: "Use W A S D to move. Press F to jump, B to place a barrier, and X to stay still. In free play, these human actions happen alongside your ally program.",
+        body: "Use W A S D to move. Press J or F to jump, B to place a barrier, and X to stay still. In free play, these human actions happen alongside your ally program.",
         targetSelector: "#score-display"
       },
       {
         id: "level-10-human-special",
         title: "Try One Special Action First",
-        body: "Before reaching the goal, use at least one special action like jump, place barrier, or stay still so you can feel how the human runner differs from Blockly logic.",
+        body: "This challenge only passes if you reach the goal after using at least one special action like jump, place barrier, or stay still.",
         targetSelector: "#canvas-container"
       }
     ],
@@ -695,8 +1056,8 @@ const LEVEL_DEFINITIONS = [
     description: "Combine Move Toward with the flag condition so the ally goes out for the flag and then brings it back.",
     introText: "Now the helper block gets two jobs: chase the enemy flag first, then chase your home base after pickup.",
     tips: [
-      "Use If I Have Enemy Flag / Else to switch the target.",
-      "Move Toward enemy flag works on the way out.",
+      "Use If I Have Enemy Flag with else to switch the target.",
+      "Move Toward enemy flag works on the way out, even when the helper needs both horizontal and vertical steps.",
       "Move Toward my base works on the way home."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
@@ -717,14 +1078,17 @@ const LEVEL_DEFINITIONS = [
     },
     failureCondition: {
       type: "turn_limit_exceeded",
-      maxTurns: 20
+      maxTurns: 28
     },
     tutorialSteps: [
       {
         id: "level-12-two-targets",
         title: "One Helper, Two Targets",
         body: "This helper block can point at different goals. Here the ally should chase the enemy flag first and then head for home.",
-        targetSelector: "#blockly-region"
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: BRING_IT_HOME_DEMO_XML,
+        demoTitle: "Example two-target program",
+        demoCaption: "The same helper block can aim at the enemy flag on the way out and your base on the way back."
       },
       {
         id: "level-12-switch",
@@ -738,9 +1102,12 @@ const LEVEL_DEFINITIONS = [
       pointsToWin: 1,
       runnerOverrides: {
         runner_1_HumanP1: { gridX: 1, gridY: 1 },
-        runner_1_AI_AllyP1: { gridX: 1, gridY: 4 },
+        runner_1_AI_AllyP1: { gridX: 1, gridY: 6 },
         runner_2_Npc1: { gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 },
         runner_2_Npc2: { gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
+      },
+      flagOverrides: {
+        2: { gridX: 7, gridY: 2 }
       }
     }
   },
@@ -751,6 +1118,7 @@ const LEVEL_DEFINITIONS = [
     introText: "Distance sensors use ideal move count, not line-of-sight. That means the game measures how many grid steps away something is.",
     tips: [
       "Within 2 spaces and within 3 spaces use Manhattan distance.",
+      "A clean beginner solution is: dodge up when the enemy is nearby, otherwise keep advancing.",
       "This level is easier if you think about ideal grid moves, not straight-line distance.",
       "The enemy is frozen so you can focus on the new sensing idea."
     ],
@@ -775,12 +1143,15 @@ const LEVEL_DEFINITIONS = [
         id: "level-13-distance",
         title: "Distance Uses Grid Steps",
         body: "Within 2 spaces means the target is close in ideal grid moves. It does not mean the target is visible in a straight line.",
-        targetSelector: "#blockly-region"
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: ENEMY_NEARBY_DEMO_XML,
+        demoTitle: "Example nearby-enemy reaction",
+        demoCaption: "When the enemy gets within 2 spaces, this program reacts by stepping up. Otherwise it keeps moving forward toward the target."
       },
       {
         id: "level-13-nearby-enemy",
         title: "Notice The Enemy Before It Is Too Close",
-        body: "Use the distance check to change the ally's move when the enemy runner gets nearby.",
+        body: "Use the distance check to change the ally's move when the enemy runner gets nearby, then fall back to forward progress when the lane feels safe.",
         targetSelector: "#canvas-container"
       }
     ],
@@ -798,12 +1169,13 @@ const LEVEL_DEFINITIONS = [
   {
     id: "jump-the-gap",
     title: "Level 14: Jump the Gap",
-    description: "Use Jump Forward to clear an obstacle that normal walking cannot pass quickly.",
-    introText: "Jump is a one-time forward move that skips over the next square and lands two cells ahead.",
+    description: "Use Jump Forward as the one decisive action that clears a wall and lands on the goal side.",
+    introText: "This lesson is about a single leap. One Jump Forward should carry the ally over the wall and into the winning lane.",
     tips: [
       "Jump Forward only goes forward.",
       "There is no backward jump in this game.",
-      "The landing space still needs to be open."
+      "The landing space still needs to be open.",
+      "Because Blockly only performs the first action it reaches, this level works best with a very short program."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -813,7 +1185,7 @@ const LEVEL_DEFINITIONS = [
     winCondition: {
       type: "runner_reaches_cell",
       runnerId: "runner_1_AI_AllyP1",
-      targetCell: { x: 5, y: 4 }
+      targetCell: { x: 3, y: 4 }
     },
     failureCondition: {
       type: "turn_limit_exceeded",
@@ -823,13 +1195,16 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-14-jump",
         title: "Jump Is A One-Time Leap",
-        body: "Jump Forward moves two cells ahead and ignores the space in between, but you only get one jump each round.",
-        targetSelector: "#blockly-region"
+        body: "Jump Forward moves two cells ahead and ignores the space in between, but you only get one jump each round. For this lesson, a single jump block is enough.",
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: JUMP_THE_GAP_DEMO_XML,
+        demoTitle: "Example one-jump solution",
+        demoCaption: "This lesson is intentionally simple: one Jump Forward clears the wall and reaches the goal side."
       },
       {
         id: "level-14-no-backward-jump",
         title: "No Backward Jump",
-        body: "This game only supports jumping forward. Build your plan with that one-way idea in mind.",
+        body: "This game only supports jumping forward. The wall blocks the whole column, so the dramatic move here is to leap straight across it.",
         targetSelector: "#canvas-container"
       }
     ],
@@ -843,7 +1218,14 @@ const LEVEL_DEFINITIONS = [
         runner_2_Npc2: { gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
       },
       barriers: [
-        { gridX: 2, gridY: 4, ownerRunnerId: "level_jump_barrier_1" }
+        { gridX: 2, gridY: 0, ownerRunnerId: "level_jump_barrier_1" },
+        { gridX: 2, gridY: 1, ownerRunnerId: "level_jump_barrier_2" },
+        { gridX: 2, gridY: 2, ownerRunnerId: "level_jump_barrier_3" },
+        { gridX: 2, gridY: 3, ownerRunnerId: "level_jump_barrier_4" },
+        { gridX: 2, gridY: 4, ownerRunnerId: "level_jump_barrier_5" },
+        { gridX: 2, gridY: 5, ownerRunnerId: "level_jump_barrier_6" },
+        { gridX: 2, gridY: 6, ownerRunnerId: "level_jump_barrier_7" },
+        { gridX: 2, gridY: 7, ownerRunnerId: "level_jump_barrier_8" }
       ]
     }
   },
@@ -853,8 +1235,8 @@ const LEVEL_DEFINITIONS = [
     description: "Use a condition so the ally jumps once and then switches back to normal movement.",
     introText: "Conditions can check the runner's resources too. In this level, the ally should jump when it can and walk after the jump has been spent.",
     tips: [
-      "Use If I Can Jump / Else for the clearest version of this idea.",
-      "After the jump is used, the condition changes.",
+      "Use If I Can Jump with else for the clearest version of this idea.",
+      "After the jump is used, the condition changes and the else move takes over.",
       "This is your first resource-aware Blockly lesson."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
@@ -875,13 +1257,16 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-15-ready",
         title: "Blockly Can Check What Is Ready",
-        body: "The If I Can Jump condition lets the ally behave one way before the jump is used and another way after it is gone.",
-        targetSelector: "#blockly-region"
+        body: "The If I Can Jump condition lets the ally behave one way before the jump is used and another way after it is gone. This is the right place for a jump first, then walking later.",
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: JUMP_IF_READY_DEMO_XML,
+        demoTitle: "Example ready-check program",
+        demoCaption: "Jump once while the resource is ready, then let the else branch switch the ally back to normal forward movement."
       },
       {
         id: "level-15-resource",
         title: "Resources Can Change During A Match",
-        body: "Jump is not permanent. Your program can react to that change instead of pretending every turn is the same.",
+        body: "Jump is not permanent. The wall blocks the whole column, so this level teaches how to leap once and then keep walking after the jump resource is gone.",
         targetSelector: "#canvas-container"
       }
     ],
@@ -895,7 +1280,14 @@ const LEVEL_DEFINITIONS = [
         runner_2_Npc2: { gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
       },
       barriers: [
-        { gridX: 2, gridY: 4, ownerRunnerId: "level_jump_ready_barrier_1" }
+        { gridX: 2, gridY: 0, ownerRunnerId: "level_jump_ready_barrier_1" },
+        { gridX: 2, gridY: 1, ownerRunnerId: "level_jump_ready_barrier_2" },
+        { gridX: 2, gridY: 2, ownerRunnerId: "level_jump_ready_barrier_3" },
+        { gridX: 2, gridY: 3, ownerRunnerId: "level_jump_ready_barrier_4" },
+        { gridX: 2, gridY: 4, ownerRunnerId: "level_jump_ready_barrier_5" },
+        { gridX: 2, gridY: 5, ownerRunnerId: "level_jump_ready_barrier_6" },
+        { gridX: 2, gridY: 6, ownerRunnerId: "level_jump_ready_barrier_7" },
+        { gridX: 2, gridY: 7, ownerRunnerId: "level_jump_ready_barrier_8" }
       ]
     }
   },
@@ -978,7 +1370,10 @@ const LEVEL_DEFINITIONS = [
         id: "level-17-stay-still",
         title: "Stay Still Can Change The Board",
         body: "If a barrier is directly ahead, Stay Still removes it. This is one of the first times that not moving is the smart move.",
-        targetSelector: "#blockly-region"
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: STAY_STILL_DEMO_XML,
+        demoTitle: "Example removal program",
+        demoCaption: "This pattern removes the barrier first, then resumes forward movement after the lane is clear."
       },
       {
         id: "level-17-after-removal",
@@ -1005,11 +1400,12 @@ const LEVEL_DEFINITIONS = [
     id: "relay-race",
     title: "Level 18: Relay Race",
     description: "Use the teammate flag condition so the ally reacts when another runner on the team has the enemy flag.",
-    introText: "Programs can pay attention to teammates too. Here, the human runner already has the enemy flag, so the ally should switch into support mode.",
+    introText: "Programs can pay attention to teammates too. Here, the human runner already has the enemy flag, so the ally should switch into support mode and reach the marked support square next to the carrier.",
     tips: [
       "The human runner starts this level already carrying the enemy flag.",
       "The teammate condition is true when another runner on your team has the flag.",
-      "Move Toward human runner is a helpful support action here."
+      "Move Toward human runner is a helpful support action here.",
+      "The highlighted support square next to the human is the goal, not the occupied human cell."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -1020,7 +1416,7 @@ const LEVEL_DEFINITIONS = [
     winCondition: {
       type: "runner_reaches_cell",
       runnerId: "runner_1_AI_AllyP1",
-      targetCell: { x: 6, y: 2 }
+      targetCell: { x: 6, y: 3 }
     },
     failureCondition: {
       type: "turn_limit_exceeded",
@@ -1030,14 +1426,17 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-18-teammate",
         title: "A Teammate Already Has The Flag",
-        body: "The human runner begins with the enemy flag, so this level is about how the ally should react when someone else becomes the carrier.",
+        body: "The human runner begins with the enemy flag, so this level is about how the ally should react when someone else becomes the carrier. Guide the ally into the marked support square next to the human.",
         targetSelector: "#canvas-container"
       },
       {
         id: "level-18-support",
         title: "Support Mode",
         body: "Use the teammate flag condition to switch into a support move. The Move Toward human runner helper is one clean way to do that.",
-        targetSelector: "#blockly-region"
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: RELAY_RACE_DEMO_XML,
+        demoTitle: "Example support program",
+        demoCaption: "When a teammate already has the flag, this program switches from chasing forward to supporting the human runner."
       }
     ],
     setupOverrides: {
@@ -1088,7 +1487,7 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-19-switch-sides",
         title: "Change Your Plan After Crossing",
-        body: "Use an If / Else territory block to do one move on your side and a different move on the enemy side.",
+        body: "Use a territory block with else to do one move on your side and a different move on the enemy side.",
         targetSelector: "#blockly-region"
       }
     ],
@@ -1106,8 +1505,8 @@ const LEVEL_DEFINITIONS = [
   {
     id: "freeze-the-lane",
     title: "Level 20: Freeze the Lane",
-    description: "Use Area Freeze at the right moment so the ally can get past a dangerous enemy lane.",
-    introText: "Area Freeze is a team power, not a normal move. It only works once each round, so timing matters.",
+    description: "Spend Area Freeze once, then let the ally keep moving toward the flag while the lane is safe.",
+    introText: "Area Freeze is a team power, not a normal move. In this level, use it once while it is ready, then switch back to Move Toward so the ally keeps advancing.",
     tips: [
       "Area Freeze affects nearby active enemies.",
       "If Area Freeze Is Ready can help you decide when that one-time power is still available.",
@@ -1133,8 +1532,11 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-20-freeze",
         title: "One Team Freeze Per Round",
-        body: "Area Freeze can lock nearby enemies in place for a short time, but your team only gets one use each round.",
-        targetSelector: "#blockly-region"
+        body: "Area Freeze can lock nearby enemies in place for a short time, but your team only gets one use each round. A simple if/else can spend it once, then switch back to movement.",
+        targetSelector: "#blockly-region",
+        demoBlocklyXml: FREEZE_THE_LANE_DEMO_XML,
+        demoTitle: "Example freeze-then-go program",
+        demoCaption: "Use the freeze while it is still ready. After that one-time action is spent, the else branch keeps the ally moving toward the enemy flag."
       },
       {
         id: "level-20-timing",
@@ -1154,13 +1556,418 @@ const LEVEL_DEFINITIONS = [
       pointsToWin: 1,
       runnerOverrides: {
         runner_1_HumanP1: { gridX: 1, gridY: 1 },
-        runner_1_AI_AllyP1: { gridX: 5, gridY: 4 },
-        runner_2_Npc1: { gridX: 7, gridY: 4, isNPC: false },
+        runner_1_AI_AllyP1: { gridX: 6, gridY: 4 },
+        runner_2_Npc1: { gridX: 7, gridY: 3 },
         runner_2_Npc2: { gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
       },
       flagOverrides: {
         2: { gridX: 9, gridY: 4 }
       }
+    }
+  },
+  {
+    id: "closest-threat",
+    title: "Level 21: Closest Threat",
+    description: "Use Move Toward closest enemy to intercept a nearby defender.",
+    introText: "Closest enemy is a different kind of target. Instead of racing for a flag, the ally can turn and meet the nearest threat.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "midfieldPressure",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.CLOSEST_ENEMY],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 5, y: 3 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 8 },
+    tutorialSteps: [
+      { id: "level-21-target", title: "A New Move Toward Target", body: "Closest enemy picks the nearest active opponent and steps toward them.", targetSelector: "#blockly-region" },
+      { id: "level-21-board", title: "Intercept The Runner", body: "This challenge is about chasing a threat, not chasing a flag.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 2, gridY: 3 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 6, gridY: 3, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "how-far-away",
+    title: "Level 22: How Far Away?",
+    description: "Use a number comparison with distance to closest enemy.",
+    introText: "Distance can become a real value in Blockly now. Compare it to a number and choose a different move when the enemy gets close enough.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.CLOSEST_ENEMY],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 2, y: 3 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 6 },
+    tutorialSteps: [
+      { id: "level-22-distance", title: "Distance Is A Number Now", body: "Distance to closest enemy can be compared with <, <=, >, and the other operator choices.", targetSelector: "#blockly-region" },
+      { id: "level-22-compare", title: "Choose A Move By Range", body: "This level wants a range check that turns upward when the threat gets close enough.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 4, gridY: 4, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "two-conditions-at-once",
+    title: "Level 23: Two Conditions At Once",
+    description: "Use AND so freeze only happens when the enemy is close and the team power is still ready.",
+    introText: "Logic blocks can combine ideas. This level is about requiring two truths before the ally spends its one team freeze.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...AREA_FREEZE_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.CLOSEST_ENEMY, MOVE_TOWARD_TARGETS.ENEMY_FLAG],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_enemy_flag", runnerId: "runner_1_AI_AllyP1" },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 10 },
+    tutorialSteps: [
+      { id: "level-23-and", title: "Both Must Be True", body: "AND is useful for a one-time power: close enough to matter, and still ready to use.", targetSelector: "#blockly-region" },
+      { id: "level-23-lane", title: "Freeze Then Continue", body: "After the freeze is spent, the ally should keep moving toward the flag.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 6, gridY: 4 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 7, gridY: 3 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      },
+      flags: { opponent: { gridX: 9, gridY: 4 } }
+    }
+  },
+  {
+    id: "this-or-that",
+    title: "Level 24: This Or That",
+    description: "Use OR to react when either danger condition becomes true.",
+    introText: "OR lets a single branch respond to more than one warning sign.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "midfieldPressure",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 6, y: 2 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 12 },
+    tutorialSteps: [
+      { id: "level-24-or", title: "Either Warning Works", body: "OR is true when either of its inputs is true. That makes one branch react to two different kinds of danger.", targetSelector: "#blockly-region" },
+      { id: "level-24-path", title: "Cross Then Turn", body: "The ally should change path once it crosses over or gets too close to the enemy.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 6, gridY: 4, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "flip-the-answer",
+    title: "Level 25: Flip The Answer",
+    description: "Use NOT to reverse a boolean check.",
+    introText: "NOT is the simplest logic block, but it is powerful. It turns a true check into a false one and vice versa.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 6, y: 2 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 12 },
+    tutorialSteps: [
+      { id: "level-25-not", title: "Reverse The Boolean", body: "NOT is useful when the easier idea to say is the opposite of what you want to test.", targetSelector: "#blockly-region" },
+      { id: "level-25-side", title: "Change After Crossing", body: "Use NOT with a side check so the ally behaves differently after it leaves home territory.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "enemy-side-decision-making",
+    title: "Level 26: Enemy-Side Decision Making",
+    description: "Use If On Enemy Side as an explicit advanced territory check.",
+    introText: "Sometimes a named condition is still clearer than a value block. This level uses the existing enemy-side condition directly.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [BLOCK_TYPES.IF_ON_ENEMY_SIDE, BLOCK_TYPES.IF_ON_ENEMY_SIDE_ELSE, ...EXTENDED_MOVEMENT_BLOCKS],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 6, y: 2 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 12 },
+    tutorialSteps: [
+      { id: "level-26-enemy-side", title: "A Named Territory Check", body: "This block asks directly whether the runner is on the enemy side of the field.", targetSelector: "#blockly-region" },
+      { id: "level-26-shift", title: "Cross Then Change", body: "Move one way on your side, then switch behavior once you cross midfield.", targetSelector: "#canvas-container" }
+    ],
+    setupOverrides: {
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      pointsToWin: 1,
+      runnerOverrides: {
+        runner_1_HumanP1: { gridX: 1, gridY: 1 },
+        runner_1_AI_AllyP1: { gridX: 1, gridY: 4 },
+        runner_2_Npc1: { gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 },
+        runner_2_Npc2: { gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
+      }
+    }
+  },
+  {
+    id: "one-program-two-allies",
+    title: "Level 27: One Program, Two Allies",
+    description: "Two allies now share one workspace. Use runner index so one moves and the other waits.",
+    introText: "This is the beginning of team programming. The same Blockly program runs for both allies, so runner index gives them different jobs.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 4, y: 4 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 8 },
+    tutorialSteps: [
+      { id: "level-27-shared-program", title: "One Workspace, Two Allies", body: "Both allies run the same blocks. Runner index is how the program can tell them apart.", targetSelector: "#blockly-region" },
+      { id: "level-27-index", title: "Index 0 And Index 1", body: "In this level, runner 0 should move while runner 1 stays out of the lane.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 5 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "index-jobs",
+    title: "Level 28: Index Jobs",
+    description: "Use runner index comparisons so one ally attacks and the other patrols upward.",
+    introText: "A comparison against runner index is the simplest way to divide jobs inside one shared program.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.ENEMY_FLAG],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_enemy_flag", runnerId: "runner_1_AI_AllyP1" },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 14 },
+    tutorialSteps: [
+      { id: "level-28-index-compare", title: "Compare The Index", body: "You can compare runner index to a number to choose different branches for different allies.", targetSelector: "#blockly-region" },
+      { id: "level-28-jobs", title: "Attacker And Patrol", body: "One ally should chase the flag while the other takes a different route.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 6 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "first-two-defend",
+    title: "Level 29: First Two Defend",
+    description: "Teach range checks on runner index so two allies take one job and the third takes another.",
+    introText: "Now the team has three Blockly-controlled allies. Index < 2 is a clean way to group the first two together.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1_3", targetCell: { x: 4, y: 4 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 10 },
+    tutorialSteps: [
+      { id: "level-29-range", title: "Index Ranges Create Teams", body: "Index < 2 can group the first two allies together while index 2 takes a separate job.", targetSelector: "#blockly-region" },
+      { id: "level-29-three-allies", title: "Three Allies, One Program", body: "In this level, the first two allies should move out of the way so the third can advance.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 2 }, { slot: "ally2", gridX: 1, gridY: 3 }, { slot: "ally3", gridX: 1, gridY: 4 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "escort-the-carrier",
+    title: "Level 30: Escort The Carrier",
+    description: "Combine teammate-has-flag with runner index to send one ally home and another into support mode.",
+    introText: "Once a teammate has the flag, different allies can take different jobs in the same turn cycle.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...TEAMMATE_FLAG_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.MY_BASE, MOVE_TOWARD_TARGETS.HUMAN_RUNNER],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1_2", targetCell: { x: 5, y: 5 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 10 },
+    tutorialSteps: [
+      { id: "level-30-teammate", title: "One Ally Has The Flag", body: "The lead ally begins as the carrier. Use teammate-has-flag plus index to send the second ally into position.", targetSelector: "#blockly-region" },
+      { id: "level-30-support", title: "Escort The Return", body: "This challenge is about support movement, not chasing a new flag.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 7, gridY: 2, hasEnemyFlag: true }, { slot: "ally2", gridX: 2, gridY: 5 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      },
+      flags: { opponent: { carriedByRunnerId: "runner_1_AI_AllyP1", isAtBase: false } }
+    }
+  },
+  {
+    id: "closest-enemy-defender",
+    title: "Level 31: Closest Enemy Defender",
+    description: "One ally attacks while another uses closest-enemy targeting as a defender.",
+    introText: "This is the first advanced level where one ally chases the goal and another actively reacts to opponents.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.ENEMY_FLAG, MOVE_TOWARD_TARGETS.CLOSEST_ENEMY],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_enemy_flag", runnerId: "runner_1_AI_AllyP1" },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 14 },
+    tutorialSteps: [
+      { id: "level-31-split", title: "Split The Team Jobs", body: "Use runner index to make the first ally attack and the second react to the closest enemy.", targetSelector: "#blockly-region" },
+      { id: "level-31-pressure", title: "Keep The Lane Clear", body: "The attacking ally still needs a path, so the defender should react without clogging the scoring lane.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 6 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 6, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "freeze-support",
+    title: "Level 32: Freeze Support",
+    description: "One ally spends the freeze while another keeps advancing.",
+    introText: "The strongest team plays are role-based. In this level, one ally is the freezer and one is the runner.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...AREA_FREEZE_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.ENEMY_FLAG],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_enemy_flag", runnerId: "runner_1_AI_AllyP1" },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 10 },
+    tutorialSteps: [
+      { id: "level-32-role", title: "A Team Freeze Specialist", body: "Use runner index so only one ally spends the team freeze while the other keeps advancing.", targetSelector: "#blockly-region" },
+      { id: "level-32-timing", title: "Support The Run", body: "The freezer should act early enough to open the lane for the attacker.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 6, gridY: 4 }, { slot: "ally2", gridX: 6, gridY: 5 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 7, gridY: 3 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      },
+      flags: { opponent: { gridX: 9, gridY: 4 } }
+    }
+  },
+  {
+    id: "barrier-specialist",
+    title: "Level 33: Barrier Specialist",
+    description: "One ally places the team barrier while the other keeps moving.",
+    introText: "Barrier placement becomes more strategic when only one ally on the team is responsible for it.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...BARRIER_PLACEMENT_BLOCKS, ...BARRIER_READY_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "barrier_exists_at_cell", targetCell: { x: 4, y: 5 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 6 },
+    tutorialSteps: [
+      { id: "level-33-index-barrier", title: "Only One Ally Should Place", body: "Use runner index together with barrier readiness so one ally becomes the barrier specialist.", targetSelector: "#blockly-region" },
+      { id: "level-33-cell", title: "Build The Support Wall", body: "This level checks for a barrier on the highlighted square.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 3, gridY: 4 }, { slot: "ally2", gridX: 3, gridY: 5 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "jump-team",
+    title: "Level 34: Jump Team",
+    description: "One ally uses the jump route while another takes a support path.",
+    introText: "Resources can be assigned by role too. This level gives one ally the dramatic jump job while the other avoids the wall.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...JUMP_CONDITION_BLOCKS, ...JUMP_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 3, y: 4 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 8 },
+    tutorialSteps: [
+      { id: "level-34-jump-role", title: "Give The Jump To One Ally", body: "Index can decide which ally gets the jump path and which ally avoids the obstacle.", targetSelector: "#blockly-region" },
+      { id: "level-34-wall", title: "One Dramatic Leap", body: "The wall blocks the lane, so the lead ally needs one good jump.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      barriers: [{ gridX: 2, gridY: 4, ownerRunnerId: "phase8_jump_wall" }],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 6 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
+    }
+  },
+  {
+    id: "advanced-scrimmage",
+    title: "Level 35: Advanced Scrimmage",
+    description: "Use one shared program for three allies in a real capture-the-flag scrimmage.",
+    introText: "This capstone brings together indexing, comparisons, movement helpers, and team strategy in one bigger match.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "wideScrimmage",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...AREA_FREEZE_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...BARRIER_READY_BLOCKS, ...JUMP_CONDITION_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.ENEMY_FLAG, MOVE_TOWARD_TARGETS.CLOSEST_ENEMY, MOVE_TOWARD_TARGETS.MY_BASE],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "team_scores_point", teamId: 1, runnerId: "runner_1_AI_AllyP1" },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 24 },
+    tutorialSteps: [
+      { id: "level-35-capstone", title: "A Full Team Script", body: "This final level expects one shared program to divide attacking, defending, and support jobs across three allies.", targetSelector: "#blockly-region" },
+      { id: "level-35-real-score", title: "Score For Real", body: "This time the level only passes when your team actually scores a point.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: {
+          playDirection: 1,
+          runners: [
+            { slot: "human", gridX: 1, gridY: 1 },
+            { slot: "ally", gridX: 1, gridY: 3 },
+            { slot: "ally2", gridX: 1, gridY: 4 },
+            { slot: "ally3", gridX: 1, gridY: 5 }
+          ]
+        },
+        opponent: {
+          playDirection: -1,
+          runners: [
+            { slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 },
+            { slot: "npc2", gridX: 10, gridY: 4, isFrozen: true, frozenTurnsRemaining: 999 },
+            { slot: "npc3", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
+          ]
+        }
+      },
+      flags: { opponent: { gridX: 9, gridY: 3 } }
     }
   }
 ];
@@ -1176,12 +1983,17 @@ export function getLevelDefinitions() {
     tutorialSteps: structuredClone(level.tutorialSteps || []),
     winCondition: { ...level.winCondition },
     failureCondition: level.failureCondition ? { ...level.failureCondition } : null,
-    setupOverrides: structuredClone(level.setupOverrides)
+    setup: normalizeLegacyLevelSetup(level.setup || level.setupOverrides)
   }));
 }
 
 export function createInitialLevelProgress() {
   return Object.fromEntries(
-    LEVEL_DEFINITIONS.map((level, index) => [level.id, index === 0 ? LEVEL_STATUS.AVAILABLE : LEVEL_STATUS.LOCKED])
+    LEVEL_DEFINITIONS.map((level, index) => [
+      level.id,
+      UNLOCK_ALL_GUIDED_LEVELS_FOR_TESTING
+        ? LEVEL_STATUS.AVAILABLE
+        : (index === 0 ? LEVEL_STATUS.AVAILABLE : LEVEL_STATUS.LOCKED)
+    ])
   );
 }

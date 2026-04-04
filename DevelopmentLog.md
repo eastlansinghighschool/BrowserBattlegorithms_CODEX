@@ -1,5 +1,28 @@
 # Development Log
 
+## 2026-04-04 - Phase 8 Advanced Blockly and Team Strategy Expansion
+
+Phase 8 is now live in the codebase rather than just planned in the Markdown. The guided campaign has expanded from twenty beginner levels to thirty-five total levels, with Levels 21-35 introducing advanced Blockly reasoning and the first multi-ally shared-program strategy arc.
+
+The Blockly system now supports a parallel advanced layer instead of replacing the beginner blocks. That advanced layer adds boolean wrappers, boolean-producing value blocks, typed numbers, comparisons, `AND`/`OR`/`NOT`, `runner index`, `distance to [target]`, `random roll`, and a free-play `playDirection value`. The runtime also now assigns stable ally indices so one Blockly workspace can drive more than one allied runner.
+
+Phase 8 also completed the persistence and portability goals that had been sitting in the phase plan: guided workspaces now persist per level, free play has its own saved workspace, XML export/import controls are available in the Blockly panel, and malformed XML imports roll back safely. A first-pass sound system was added as well, including a persisted sound toggle and lightweight effects for freeze, flag pickup, scoring, and level pass/fail.
+
+While implementing this pass, several integration bugs were fixed along the way:
+
+- team-first level definitions now normalize correctly instead of dropping advanced team-owned runners
+- advanced boolean output blocks now map into the existing condition evaluator instead of silently evaluating false
+- `Move Toward closest enemy` now works in guided levels that use frozen teaching props
+- the first advanced teamwork levels were re-authored so their intended reference solutions are actually solvable
+
+## 2026-04-03 - Team-First Match Setup Refactor
+
+The runtime no longer treats teams as a thin bootstrap layer that gets immediately overridden by per-runner direction mutations. Active matches now build explicit team state first, and that team state owns the concepts that are actually team-level in the game design: `playDirection`, home side, scoring base cells, flag home location, flag emoji, and team glow colors.
+
+This refactor was prompted by repeated confusion around mirrored tutorial levels and runner-facing visuals. The old architecture allowed levels to mutate individual runners after construction, which made it too easy to create split ownership between `TEAM_CONFIG`, runner instances, and level-specific overrides. The new architecture makes runners inherit `playDirection` from their active team instead, validates that the two teams always point in opposite directions, and makes downstream systems such as scoring, sensing, NPC logic, and visual effects read the active runtime teams.
+
+Free play also now randomizes which team attacks left-to-right versus right-to-left each time it is entered, while still enforcing one `1` direction and one `-1` direction. That keeps the "forward is relative" idea alive outside the guided campaign without allowing invalid same-direction matches.
+
 ## 2026-03-31 - Current Project State Assessment
 
 The project is now in a playable **Phase 7 expansion** state. Relative to the goals in [GameSpecification.md](D:/ai/Codex/BrowserBattlegorithms_CODEX/GameSpecification.md), the game now includes not only the core sandbox match loop, but also a guided-first learning flow with twenty authored guided levels, level pass/fail evaluation, level unlock progression, Blockly toolbox restriction by challenge, and a first-pass onboarding/tutorial system aimed at beginners.
@@ -38,6 +61,11 @@ The project has also advanced beyond its earlier monolithic prototype structure.
 - Runtime libraries are now managed through npm, with p5 pinned to the current 1.x line and Blockly imported as ES modules.
 - Core regression tests are in [tests/unit/core.test.js](D:/ai/Codex/BrowserBattlegorithms_CODEX/tests/unit/core.test.js).
 - Browser smoke tests are in [tests/browser/smoke.spec.js](D:/ai/Codex/BrowserBattlegorithms_CODEX/tests/browser/smoke.spec.js).
+
+## Additional Gameplay Rules Update
+
+- Collision resolution was revised so only one runner can occupy the collision cell after contact. The winner stays on the collision square, while the loser is frozen back on the attacker's origin square.
+- Home-flag cells are now blocked for their own team while that flag is still at base. This removes direct flag camping and keeps captures visually legible.
 
 ## Phase Assessment
 

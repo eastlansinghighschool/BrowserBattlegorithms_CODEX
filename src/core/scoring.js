@@ -1,4 +1,5 @@
-import { TEAM_CONFIG, TURN_STATES, MAIN_GAME_STATES } from "../config/constants.js";
+import { TURN_STATES, MAIN_GAME_STATES } from "../config/constants.js";
+import { getTeamBaseCellType } from "./teams.js";
 
 export function checkForFlagPickup(state, runner) {
   if (runner.hasEnemyFlag) {
@@ -18,7 +19,7 @@ export function checkForScoring(state, runner) {
     return false;
   }
 
-  const runnerBaseCellType = TEAM_CONFIG[runner.team].baseCellType;
+  const runnerBaseCellType = getTeamBaseCellType(state, runner.team);
   const currentCellType = state.gameMap[runner.gridY][runner.gridX];
   if (currentCellType !== runnerBaseCellType) {
     return false;
@@ -28,6 +29,7 @@ export function checkForScoring(state, runner) {
   const scoredFlag = state.gameFlags[enemyTeamId];
   if (scoredFlag && scoredFlag.carriedByRunnerId === runner.id) {
     runner.dropFlag(scoredFlag);
+    scoredFlag.resetToInitialPosition();
   } else {
     runner.hasEnemyFlag = false;
   }

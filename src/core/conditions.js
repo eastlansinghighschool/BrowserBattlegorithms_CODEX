@@ -8,6 +8,7 @@ import {
   SENSOR_RELATION_TYPES
 } from "../config/constants.js";
 import { getBarrierAtCell, getForwardCell, getRunnerAtCell } from "./movement.js";
+import { isOnHomeSide } from "./teams.js";
 
 function normalizeConditionDescriptor(condition) {
   if (typeof condition === "string") {
@@ -63,7 +64,7 @@ export function getSensorCandidates(state, runner, objectType) {
     }
     case SENSOR_OBJECT_TYPES.ENEMY_RUNNER:
       return state.allRunners
-        .filter((candidate) => candidate.team !== runner.team && !candidate.isFrozen)
+        .filter((candidate) => candidate.team !== runner.team)
         .map((candidate) => ({ x: candidate.gridX, y: candidate.gridY }));
     case SENSOR_OBJECT_TYPES.ENEMY_FLAG:
       return getEnemyFlagCandidate(state, runner);
@@ -176,11 +177,11 @@ export function evaluateCondition(state, runner, condition) {
   }
 
   if (descriptor.type === BLOCK_TYPES.IF_ON_MY_SIDE || descriptor.type === BLOCK_TYPES.IF_ON_MY_SIDE_ELSE) {
-    return runner.team === 1 ? runner.gridX < COLS / 2 : runner.gridX >= COLS / 2;
+    return isOnHomeSide(state, runner);
   }
 
   if (descriptor.type === BLOCK_TYPES.IF_ON_ENEMY_SIDE || descriptor.type === BLOCK_TYPES.IF_ON_ENEMY_SIDE_ELSE) {
-    return runner.team === 1 ? runner.gridX >= COLS / 2 : runner.gridX < COLS / 2;
+    return !isOnHomeSide(state, runner);
   }
 
   const forwardCell = getForwardCell(runner, 1);

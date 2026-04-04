@@ -1,7 +1,9 @@
+import * as Blockly from "blockly";
 import {
   DEFAULT_GAME_MODE,
   DEFAULT_MAP_KEY,
   GAME_VIEW_MODES,
+  GOAL_BURST_DURATION_MS,
   HUMAN_TURN_BEHAVIORS,
   LEVEL_RESULT,
   LEVEL_STATUS,
@@ -10,7 +12,9 @@ import {
   TURN_STATES
 } from "../config/constants.js";
 import { createInitialLevelProgress, getLevelDefinitions } from "../config/levels.js";
-import { initializeDisplayState, initializeMatch } from "./setup.js";
+import { initializeDisplayState, initializeMatch, syncHumanTurnBehaviorVisuals } from "./setup.js";
+import { createRandomizedFreePlayTeamSetup, getTeamFlagHome } from "./teams.js";
+import { playSound } from "../ui/sound.js";
 
 function findCurrentLevel(state) {
   return state.levels.find((level) => level.id === state.currentLevelId) || null;
@@ -24,92 +28,16 @@ function getNextLevelId(state, currentLevelId) {
   return state.levels[index + 1].id;
 }
 
-function applyRunnerOverrides(state, setupOverrides) {
-  const runnerOverrides = setupOverrides?.runnerOverrides || {};
-  for (const runner of state.allRunners) {
-    const override = runnerOverrides[runner.id];
-    if (!override) {
-      continue;
-    }
-    if (override.gridX !== undefined) {
-      runner.gridX = override.gridX;
-      runner.initialGridX = override.gridX;
-      runner.pixelX = override.gridX * 50;
-      runner.targetGridX = override.gridX;
-      runner.targetPixelX = runner.pixelX;
-    }
-    if (override.gridY !== undefined) {
-      runner.gridY = override.gridY;
-      runner.initialGridY = override.gridY;
-      runner.pixelY = override.gridY * 50;
-      runner.targetGridY = override.gridY;
-      runner.targetPixelY = runner.pixelY;
-    }
-    if (override.isFrozen) {
-      runner.setFrozen(override.frozenTurnsRemaining || 1);
-    }
-    if (override.playDirection !== undefined) {
-      runner.playDirection = override.playDirection;
-    }
-    if (override.isNPC !== undefined) {
-      runner.isNPC = override.isNPC;
-    }
-    if (override.isHumanControlled !== undefined) {
-      runner.isHumanControlled = override.isHumanControlled;
-    }
-    if (override.canJump !== undefined) {
-      runner.canJump = override.canJump;
-    }
-    if (override.canPlaceBarrier !== undefined) {
-      runner.canPlaceBarrier = override.canPlaceBarrier;
-    }
-    if (override.hasEnemyFlag !== undefined) {
-      runner.hasEnemyFlag = override.hasEnemyFlag;
-    }
-  }
-}
-
-function applyFlagOverrides(state, setupOverrides) {
-  const flagOverrides = setupOverrides?.flagOverrides || {};
-  for (const [teamId, override] of Object.entries(flagOverrides)) {
-    const flag = state.gameFlags[teamId];
-    if (!flag || !override) {
-      continue;
-    }
-    if (override.gridX !== undefined) {
-      flag.gridX = override.gridX;
-      flag.initialGridX = override.gridX;
-    }
-    if (override.gridY !== undefined) {
-      flag.gridY = override.gridY;
-      flag.initialGridY = override.gridY;
-    }
-    if (override.isAtBase !== undefined) {
-      flag.isAtBase = override.isAtBase;
-    }
-    if (override.carriedByRunnerId !== undefined) {
-      flag.carriedByRunnerId = override.carriedByRunnerId;
-    }
-    if (flag.carriedByRunnerId) {
-      const carrier = state.allRunners.find((runner) => runner.id === flag.carriedByRunnerId);
-      if (carrier) {
-        carrier.hasEnemyFlag = true;
-        flag.gridX = carrier.gridX;
-        flag.gridY = carrier.gridY;
-      }
-    }
-  }
-}
-
 function applyLevelToState(state, level) {
+  const levelSetup = level.setup || {};
   state.currentGameMode = level.mode;
   state.currentMapKey = level.mapKey;
   state.gameMap = MAPS[level.mapKey];
-  state.pointsToWin = level.setupOverrides?.pointsToWin || 1;
-  state.autoStayHumanRunnerIds = level.setupOverrides?.autoStayHumanRunnerIds || [];
-  state.displayRunnerOverrides = level.setupOverrides?.runnerOverrides || null;
-  state.displayFlagOverrides = level.setupOverrides?.flagOverrides || null;
-  state.setupBarriers = level.setupOverrides?.barriers || [];
+  state.pointsToWin = levelSetup.pointsToWin || 1;
+  state.autoStayHumanRunnerIds = levelSetup.autoStayHumanRunnerIds || [];
+  state.activeTeamSetup = structuredClone(levelSetup.teams || null);
+  state.activeFlagSetup = structuredClone(levelSetup.flags || null);
+  state.setupBarriers = levelSetup.barriers || [];
 }
 
 export function initializeLevelState(app) {
@@ -146,9 +74,11 @@ export function getLevelStateSnapshot(app) {
     lastLevelResultReason: state.lastLevelResultReason,
     levelProgress: { ...state.levelProgress },
     humanTurnBehavior: state.humanTurnBehavior,
+    teams: structuredClone(state.teams || {}),
     currentSensorObjectTypes: [...(state.currentSensorObjectTypes || [])],
     currentSensorRelationTypes: [...(state.currentSensorRelationTypes || [])],
     currentMoveTowardTargetTypes: [...(state.currentMoveTowardTargetTypes || [])],
+    goalBurstEffect: state.goalBurstEffect ? { ...state.goalBurstEffect } : null,
     activeTutorial: state.activeTutorial ? {
       key: state.activeTutorial.key,
       currentIndex: state.activeTutorial.currentIndex
@@ -181,7 +111,9 @@ export function enterFreePlay(app) {
   state.gameMap = MAPS[DEFAULT_MAP_KEY];
   state.pointsToWin = 2;
   state.autoStayHumanRunnerIds = [];
-  state.displayRunnerOverrides = null;
+  state.activeTeamSetup = createRandomizedFreePlayTeamSetup(state.currentGameMode, state.randomFn);
+  state.activeFlagSetup = null;
+  state.setupBarriers = [];
   state.humanTurnBehavior = HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT;
   state.activeLevelResult = LEVEL_RESULT.NONE;
   state.lastLevelResultReason = null;
@@ -208,8 +140,7 @@ export function startLevel(app, levelId = app.state.currentLevelId) {
   applyLevelToState(state, level);
   state.humanTurnBehavior = level.humanTurnBehavior || HUMAN_TURN_BEHAVIORS.AUTO_SKIP;
   initializeMatch(app);
-  applyRunnerOverrides(state, level.setupOverrides);
-  applyFlagOverrides(state, level.setupOverrides);
+  syncHumanTurnBehaviorVisuals(state);
   state.mainGameState = MAIN_GAME_STATES.RUNNING;
   if (typeof app.hooks.onLevelStarted === "function") {
     app.hooks.onLevelStarted(level);
@@ -219,17 +150,36 @@ export function startLevel(app, levelId = app.state.currentLevelId) {
 
 export function resetCurrentLevel(app, reason = "manual_reset") {
   const { state } = app;
+  const preservedWorkspaceXml = app.blocklyWorkspace
+    ? Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(app.blocklyWorkspace))
+    : "";
   state.lastLevelResultReason = reason;
   enterGuidedMode(app);
+  if (preservedWorkspaceXml) {
+    const xml = Blockly.utils.xml.textToDom(preservedWorkspaceXml);
+    app.blocklyWorkspace.clear();
+    Blockly.Xml.domToWorkspace(xml, app.blocklyWorkspace);
+  }
   return getCurrentLevel(app);
 }
 
 export function setGuidedHumanTurnBehavior(app, behavior) {
   app.state.humanTurnBehavior = behavior;
+  syncHumanTurnBehaviorVisuals(app.state);
 }
 
 export function completeLevel(app, result, reason) {
   const { state } = app;
+  if (result === LEVEL_RESULT.PASSED) {
+    playSound(state, "level-pass");
+    const goalCell = getLevelGoalCell(app);
+    if (goalCell) {
+      triggerGoalBurst(state, goalCell, getCurrentLevel(app)?.winCondition?.teamId || 1);
+    }
+  }
+  if (result === LEVEL_RESULT.FAILED) {
+    playSound(state, "level-fail");
+  }
   state.activeLevelResult = result;
   state.lastLevelResultReason = reason;
   state.mainGameState = MAIN_GAME_STATES.LEVEL_RESULT;
@@ -247,6 +197,68 @@ export function completeLevel(app, result, reason) {
   if (typeof app.hooks.onLevelEnded === "function") {
     app.hooks.onLevelEnded(result, reason);
   }
+}
+
+export function triggerGoalBurst(state, cell, teamId = 1) {
+  if (!cell) {
+    return;
+  }
+  state.goalBurstEffect = {
+    cellX: cell.x,
+    cellY: cell.y,
+    teamId,
+    durationMs: GOAL_BURST_DURATION_MS,
+    burstKey: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+  };
+}
+
+export function getLevelGoalCell(app) {
+  const level = getCurrentLevel(app);
+  if (!level || app.state.currentModeView !== GAME_VIEW_MODES.GUIDED_LEVELS) {
+    return null;
+  }
+
+  let targetX = null;
+  let targetY = null;
+  if (level.winCondition.type === "runner_reaches_cell") {
+    targetX = level.winCondition.targetCell.x;
+    targetY = level.winCondition.targetCell.y;
+  } else if (level.winCondition.type === "runner_reaches_cell_after_action") {
+    targetX = level.winCondition.targetCell.x;
+    targetY = level.winCondition.targetCell.y;
+  } else if (level.winCondition.type === "barrier_exists_at_cell") {
+    targetX = level.winCondition.targetCell.x;
+    targetY = level.winCondition.targetCell.y;
+  } else if (level.winCondition.type === "runner_reaches_enemy_flag") {
+    const actor = app.state.allRunners.find((runner) => runner.id === level.winCondition.runnerId);
+    const enemyTeamId = actor?.team === 1 ? 2 : 1;
+    const enemyFlag = app.state.gameFlags[enemyTeamId];
+    if (enemyFlag) {
+      targetX = enemyFlag.gridX;
+      targetY = enemyFlag.gridY;
+    }
+  } else if (level.winCondition.type === "team_scores_point") {
+    const actor = app.state.allRunners.find((runner) => runner.id === level.winCondition.runnerId || runner.id === "runner_1_AI_AllyP1");
+    const scoredAlready = (app.state.teamScores[level.winCondition.teamId] || 0) > 0;
+    if (actor && scoredAlready) {
+      targetX = actor.gridX;
+      targetY = actor.gridY;
+    } else if (actor?.hasEnemyFlag) {
+      const teamFlagHome = getTeamFlagHome(app.state, actor.team);
+      const scoringEntryX = (teamFlagHome?.x ?? actor.gridX) + actor.playDirection;
+      targetX = scoringEntryX;
+      targetY = actor.gridY;
+    } else {
+      const enemyTeamId = actor?.team === 1 ? 2 : 1;
+      const enemyFlag = app.state.gameFlags[enemyTeamId];
+      if (enemyFlag) {
+        targetX = enemyFlag.gridX;
+        targetY = enemyFlag.gridY;
+      }
+    }
+  }
+
+  return targetX === null || targetY === null ? null : { x: targetX, y: targetY };
 }
 
 export function goToNextLevel(app) {

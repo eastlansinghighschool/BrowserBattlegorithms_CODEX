@@ -6,12 +6,16 @@ import {
   getMoveTowardTargetLabels,
   getSensorObjectLabels,
   getSensorRelationLabels,
+  getWorkspaceXmlText,
+  importWorkspaceXml,
   initBlockly,
-  loadWorkspaceXml,
+  loadWorkspaceFromLocalStorage,
   setBlocklyEditable,
   setBlocklyToolboxForCurrentMode
 } from "./ai/blockly/workspace.js";
-import { bindControls } from "./ui/controls.js";
+import { bindControls, handleKeyInput } from "./ui/controls.js";
+import { bindGoalBurstOverlay, renderGoalBurstOverlay } from "./ui/goalBurstOverlay.js";
+import { initializeSoundState } from "./ui/sound.js";
 import { updateScoreDisplay } from "./ui/scoreboard.js";
 import { setPlayButtonState } from "./ui/gameStateUI.js";
 import { initializeP5App } from "./render/p5App.js";
@@ -39,13 +43,14 @@ import {
 
 const app = createApp();
 app.ui.isLevelPickerOpen = false;
+initializeSoundState(app.state);
 
 function loadCurrentLevelWorkspace() {
   const currentLevel = getCurrentLevel(app);
   if (!currentLevel) {
     return;
   }
-  loadWorkspaceXml(app, currentLevel.initialBlocklyXml || "");
+  loadWorkspaceFromLocalStorage(app, currentLevel.initialBlocklyXml || "");
 }
 
 app.hooks.onGuidedLevelSelected = () => {
@@ -59,6 +64,7 @@ app.hooks.onFreePlayEntered = () => {
   closeTutorial(app, false);
   setBlocklyEditable(app, true);
   setBlocklyToolboxForCurrentMode(app);
+  loadWorkspaceFromLocalStorage(app, "");
 };
 
 app.hooks.onLevelStarted = () => {
@@ -85,6 +91,7 @@ app.syncUi = () => {
   updateScoreDisplay(app);
   setPlayButtonState(app);
   renderLevelPanel(app);
+  renderGoalBurstOverlay(app);
   updateSpotlight(app);
   renderTutorialOverlay(app);
 };
@@ -93,6 +100,7 @@ initializeLevelState(app);
 initializeTutorialState(app);
 initBlockly(app);
 bindControls(app);
+bindGoalBurstOverlay(app);
 bindLevelPanel(app);
 bindTutorialOverlay(app);
 initializeDisplayState(app);
@@ -108,7 +116,8 @@ window.__BBA_TEST_HOOKS__ = {
   getMoveTowardTargetLabels: () => getMoveTowardTargetLabels(),
   getSensorObjectLabels: () => getSensorObjectLabels(),
   getSensorRelationLabels: () => getSensorRelationLabels(),
-  loadWorkspaceXml: (xmlText) => loadWorkspaceXml(app, xmlText),
+  loadWorkspaceXml: (xmlText) => importWorkspaceXml(app, xmlText),
+  getWorkspaceXmlText: () => getWorkspaceXmlText(app),
   getAIAllyAction: () => getAIAllyAction(app),
   startCurrentLevelTutorial: (force = false) => {
     startCurrentLevelTutorial(app, force);
@@ -133,6 +142,11 @@ window.__BBA_TEST_HOOKS__ = {
     processTurnActions(app, app.p5Instance);
     app.syncUi();
     return app.state;
+  },
+  sendKey: (key) => {
+    const handled = handleKeyInput(app, key);
+    app.syncUi();
+    return handled;
   },
   app
 };

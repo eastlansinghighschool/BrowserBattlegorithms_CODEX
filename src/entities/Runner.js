@@ -1,9 +1,9 @@
 import {
   BASE_ANIMATION_SPEED,
-  CELL_SIZE,
-  TEAM_CONFIG
+  CELL_SIZE
 } from "../config/constants.js";
 import { easeInOutQuad } from "../render/animation.js";
+import { resolveRunnerDisplayEmoji, shouldMirrorRunnerEmoji } from "../render/runnerVisuals.js";
 
 export class Runner {
   constructor(x, y, team, isHumanControlled = false, idSuffix = "", isNPC = false) {
@@ -29,21 +29,20 @@ export class Runner {
     this.isHumanControlled = isHumanControlled;
     this.isNPC = isNPC;
     this.id = `runner_${team}_${idSuffix || Math.random().toString(16).slice(2, 8)}`;
-    this.playDirection = TEAM_CONFIG[this.team]?.playDirection || 1;
-
-    const teamConfigData = TEAM_CONFIG[this.team];
-    if (this.isHumanControlled) {
-      this.baseEmoji = teamConfigData?.humanEmoji || "?";
-      this.frozenEmoji = teamConfigData?.humanFrozenEmoji || "H";
-    } else if (this.isNPC) {
-      this.baseEmoji = teamConfigData?.npcEnemyEmoji || "N";
-      this.frozenEmoji = teamConfigData?.npcEnemyFrozenEmoji || "N";
-    } else {
-      this.baseEmoji = teamConfigData?.aiAllyEmoji || "A";
-      this.frozenEmoji = teamConfigData?.aiAllyFrozenEmoji || "A";
-    }
+    this.playDirection = 1;
+    this.runnerRole = this.isHumanControlled ? "human" : (this.isNPC ? "npc" : "ally");
+    this.allyIndex = null;
+    this.carriedFlagEmoji = null;
 
     this.resetToInitial();
+  }
+
+  getDisplayEmoji() {
+    return resolveRunnerDisplayEmoji(this);
+  }
+
+  shouldMirrorEmojiDisplay() {
+    return shouldMirrorRunnerEmoji(this);
   }
 
   setFrozen(turns) {
@@ -59,20 +58,34 @@ export class Runner {
   }
 
   display(p) {
-    const emojiToDisplay = this.isFrozen ? this.frozenEmoji : this.baseEmoji;
+    const emojiToDisplay = this.getDisplayEmoji();
+    const centerX = this.pixelX + CELL_SIZE / 2;
+    const centerY = this.pixelY + CELL_SIZE / 2;
+
+    p.push();
     p.fill(0);
     p.textAlign(p.CENTER, p.CENTER);
     p.textSize(CELL_SIZE * 0.7);
-    p.text(emojiToDisplay, this.pixelX + CELL_SIZE / 2, this.pixelY + CELL_SIZE / 2);
+    if (this.shouldMirrorEmojiDisplay()) {
+      p.translate(centerX, centerY);
+      p.scale(-1, 1);
+      p.text(emojiToDisplay, 0, 0);
+    } else {
+      p.text(emojiToDisplay, centerX, centerY);
+    }
+    p.pop();
 
     if (this.hasEnemyFlag) {
-      const enemyTeam = this.team === 1 ? 2 : 1;
+      p.push();
+      p.fill(0);
+      p.textAlign(p.CENTER, p.CENTER);
       p.textSize(CELL_SIZE * 0.3);
       p.text(
-        TEAM_CONFIG[enemyTeam].flagEmoji,
+        this.carriedFlagEmoji || "⚑",
         this.pixelX + CELL_SIZE * 0.8,
         this.pixelY + CELL_SIZE * 0.2
       );
+      p.pop();
     }
   }
 
@@ -108,6 +121,7 @@ export class Runner {
     this.bounceProgress = 0;
     this.isFrozen = false;
     this.frozenTurnsRemaining = 0;
+    this.isAutoSkipFrozen = false;
     this.canJump = true;
     this.canPlaceBarrier = true;
     this.activeBarrierId = null;

@@ -7,7 +7,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function chooseGuided(page) {
-  await page.getByRole("button", { name: "Guided Levels" }).click();
+  await page.waitForLoadState("domcontentloaded");
+  const guidedButton = page.getByRole("button", { name: "Guided Levels" });
+  await expect(guidedButton).toBeVisible({ timeout: 10000 });
+  await guidedButton.click();
 }
 
 async function dismissTutorial(page) {
@@ -210,9 +213,9 @@ test("guided toolbox expands correctly for levels 3 and 4", async ({ page }) => 
     hooks.startLevel("score-a-point");
   });
 
-  let toolboxLabels = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getAvailableToolboxBlockLabels());
-  expect(toolboxLabels).toContain("If I Have Enemy Flag");
-  expect(toolboxLabels).toContain("If I Have Enemy Flag / Else");
+  let toolboxTypes = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getAvailableToolboxBlockTypes());
+  expect(toolboxTypes).toContain("battlegorithms_if_have_enemy_flag");
+  expect(toolboxTypes).toContain("battlegorithms_if_have_enemy_flag_else");
 
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
@@ -220,9 +223,9 @@ test("guided toolbox expands correctly for levels 3 and 4", async ({ page }) => 
     hooks.startLevel("barrier-detour");
   });
 
-  toolboxLabels = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getAvailableToolboxBlockLabels());
-  expect(toolboxLabels).toContain("If Barrier Is In Front");
-  expect(toolboxLabels).toContain("If Barrier Is In Front / Else");
+  toolboxTypes = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getAvailableToolboxBlockTypes());
+  expect(toolboxTypes).toContain("battlegorithms_if_barrier_in_front");
+  expect(toolboxTypes).toContain("battlegorithms_if_barrier_in_front_else");
 });
 
 test("sensing levels gate the generic sensor dropdown options by level", async ({ page }) => {
@@ -294,6 +297,61 @@ test("later guided levels gate Move Toward targets and human practice waits for 
   expect(levelData.humanLevelState.humanTurnBehavior).toBe("WAIT_FOR_INPUT");
   expect(levelData.moveTowardFlagTargets).toEqual(["enemy flag"]);
   expect(levelData.bringItHomeTargets).toEqual(["enemy flag", "my base"]);
+});
+
+test("level 6 tutorial shows the generic sensor demo preview", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    Object.assign(hooks.app.state.levelProgress, {
+      "move-to-target": "PASSED",
+      "reach-enemy-flag": "PASSED",
+      "score-a-point": "PASSED",
+      "barrier-detour": "PASSED",
+      "mirror-forward": "PASSED",
+      "sensor-barrier-branch": "AVAILABLE"
+    });
+    hooks.startLevel("sensor-barrier-branch");
+    hooks.startCurrentLevelTutorial(true);
+  });
+
+  await expect(page.locator("#tutorial-overlay")).toContainText("One Block Shape, Many Sensor Ideas");
+  await expect(page.locator(".tutorial-demo-blockly")).toBeVisible();
+  await expect(page.locator(".tutorial-demo")).toContainText("Example sensor branch");
+  await expect(page.locator(".tutorial-demo .blocklySvg")).toContainText("barrier");
+});
+
+test("condition blocks render consistent If and else labels", async ({ page }) => {
+  await page.goto("/");
+  const labels = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.enterFreePlay();
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24">
+          <next>
+            <block type="battlegorithms_if_sensor_matches_else">
+              <field name="OBJECT">BARRIER</field>
+              <field name="RELATION">DIRECTLY_IN_FRONT</field>
+              <statement name="DO">
+                <block type="battlegorithms_move_down_screen"></block>
+              </statement>
+              <statement name="ELSE">
+                <block type="battlegorithms_move_forward"></block>
+              </statement>
+            </block>
+          </next>
+        </block>
+      </xml>
+    `);
+    const block = hooks.getBlocklyWorkspace().getBlocksByType("battlegorithms_if_sensor_matches_else", false)[0];
+    return block.inputList.map((input) => input.fieldRow.map((field) => field.getText?.()).filter(Boolean));
+  });
+
+  expect(labels[0]).toEqual(["If", "barrier", "is", "directly in front"]);
+  expect(labels[1]).toEqual([]);
+  expect(labels[2]).toEqual(["else"]);
 });
 
 test("level 3 tutorial introduces scoring and level 4 tutorial introduces barrier logic", async ({ page }) => {
@@ -443,6 +501,125 @@ test("seeded generic sensor programs choose the expected action", async ({ page 
   expect(actions.humanAction).toBe("MOVE_UP_SCREEN");
 });
 
+test("level 8 tutorial can show a read-only demo program without changing the learner workspace", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    Object.assign(hooks.app.state.levelProgress, {
+      "move-to-target": "PASSED",
+      "reach-enemy-flag": "PASSED",
+      "score-a-point": "PASSED",
+      "barrier-detour": "PASSED",
+      "mirror-forward": "PASSED",
+      "sensor-barrier-branch": "PASSED",
+      "watch-the-wall": "PASSED",
+      "find-the-human": "AVAILABLE"
+    });
+    hooks.startLevel("find-the-human");
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24"></block>
+      </xml>
+    `);
+    hooks.startCurrentLevelTutorial(true);
+  });
+
+  await expect(page.locator("#tutorial-overlay")).toContainText("Use A Sensor To Find The Human");
+  await expect(page.locator(".tutorial-demo-blockly")).toBeVisible();
+  await expect(page.locator(".tutorial-demo")).toContainText("Example support-route program");
+  await expect(page.locator(".tutorial-demo .blocklySvg")).toContainText("Move Forward");
+
+  const workspaceState = await page.evaluate(() => {
+    const workspace = window.__BBA_TEST_HOOKS__.getBlocklyWorkspace();
+    return workspace.getTopBlocks(false).map((block) => ({
+      type: block.type,
+      childCount: block.getChildren(false).length
+    }));
+  });
+
+  expect(workspaceState).toEqual([
+    {
+      type: "battlegorithms_on_each_turn",
+      childCount: 0
+    }
+  ]);
+});
+
+test("a seeded level 8 reference solution reaches the revised support target", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    Object.assign(hooks.app.state.levelProgress, {
+      "move-to-target": "PASSED",
+      "reach-enemy-flag": "PASSED",
+      "score-a-point": "PASSED",
+      "barrier-detour": "PASSED",
+      "mirror-forward": "PASSED",
+      "sensor-barrier-branch": "PASSED",
+      "watch-the-wall": "PASSED",
+      "find-the-human": "AVAILABLE"
+    });
+    hooks.startLevel("find-the-human");
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24">
+          <next>
+            <block type="battlegorithms_if_sensor_matches_else">
+              <field name="OBJECT">HUMAN_RUNNER</field>
+              <field name="RELATION">ANYWHERE_ABOVE</field>
+              <statement name="DO">
+                <block type="battlegorithms_move_up_screen"></block>
+              </statement>
+              <statement name="ELSE">
+                <block type="battlegorithms_if_sensor_matches_else">
+                  <field name="OBJECT">HUMAN_RUNNER</field>
+                  <field name="RELATION">ANYWHERE_FORWARD</field>
+                  <statement name="DO">
+                    <block type="battlegorithms_move_forward"></block>
+                  </statement>
+                  <statement name="ELSE">
+                    <block type="battlegorithms_move_down_screen"></block>
+                  </statement>
+                </block>
+              </statement>
+            </block>
+          </next>
+        </block>
+      </xml>
+    `);
+
+    const actor = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+    let evaluation = null;
+    for (let step = 0; step < 10; step += 1) {
+      const action = hooks.getAIAllyAction();
+      if (action?.type === "MOVE_FORWARD") {
+        actor.gridX += actor.playDirection;
+      } else if (action?.type === "MOVE_UP_SCREEN") {
+        actor.gridY -= 1;
+      } else if (action?.type === "MOVE_DOWN_SCREEN") {
+        actor.gridY += 1;
+      }
+      evaluation = hooks.evaluateLevelProgress();
+      if (evaluation?.result === "PASSED") {
+        break;
+      }
+    }
+
+    const human = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_HumanP1");
+    return {
+      evaluation,
+      actor: { x: actor.gridX, y: actor.gridY },
+      human: { x: human.gridX, y: human.gridY }
+    };
+  });
+
+  expect(result.evaluation).toEqual({ result: "PASSED", reason: "win_condition_met" });
+  expect(result.actor).toEqual({ x: 5, y: 2 });
+  expect(result.human).toEqual({ x: 6, y: 2 });
+});
+
 test("guided score completion produces a passed result instead of the generic game-over state", async ({ page }) => {
   await page.goto("/");
   const scoreResult = await page.evaluate(() => {
@@ -457,7 +634,32 @@ test("guided score completion produces a passed result instead of the generic ga
 
   expect(scoreResult).toEqual({ result: "PASSED", reason: "win_condition_met" });
   await expect(page.locator("#level-panel")).toContainText("Scoring a point completed the challenge");
-  await expect(page.locator("#playResetButton")).toHaveText("Replay Level");
+  await expect(page.locator("#playResetButton")).toHaveText("Reset Level");
+});
+
+test("guided completion triggers a localized goal burst at the tutorial target", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    hooks.startLevel("move-to-target");
+    const actor = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+    actor.gridX = 4;
+    actor.gridY = 4;
+    hooks.evaluateLevelProgress();
+    const effect = hooks.getLevelState().goalBurstEffect;
+    const overlay = document.querySelector("#goal-burst-overlay .goal-burst");
+    const overlayStyle = overlay ? window.getComputedStyle(overlay) : null;
+    return {
+      effect,
+      overlayExists: Boolean(overlay),
+      overlayPosition: overlayStyle?.position || null
+    };
+  });
+
+  expect(result.effect).toMatchObject({ cellX: 4, cellY: 4, teamId: 1 });
+  expect(result.overlayExists).toBe(true);
+  expect(result.overlayPosition).toBe("fixed");
 });
 
 test("failing a guided level restores Blockly editing", async ({ page }) => {
@@ -477,7 +679,91 @@ test("failing a guided level restores Blockly editing", async ({ page }) => {
 
   expect(result.levelState.activeLevelResult).toBe("FAILED");
   expect(result.readOnly).toBeFalsy();
-  await expect(page.locator("#playResetButton")).toHaveText("Retry Level");
+  await expect(page.locator("#playResetButton")).toHaveText("Reset Level");
+});
+
+test("level 10 accepts J as a human jump key", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    Object.assign(hooks.app.state.levelProgress, {
+      "move-to-target": "PASSED",
+      "reach-enemy-flag": "PASSED",
+      "score-a-point": "PASSED",
+      "barrier-detour": "PASSED",
+      "mirror-forward": "PASSED",
+      "sensor-barrier-branch": "PASSED",
+      "watch-the-wall": "PASSED",
+      "find-the-human": "PASSED",
+      "find-the-enemy-flag": "PASSED",
+      "human-runner-practice": "AVAILABLE"
+    });
+    hooks.startLevel("human-runner-practice");
+    const human = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_HumanP1");
+    hooks.app.state.activeRunnerIndex = hooks.app.state.allRunners.indexOf(human);
+  });
+
+  const jumpState = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    const handled = hooks.sendKey("j");
+    return {
+      handled,
+      turnState: hooks.app.state.currentTurnState,
+      queuedActionType: hooks.app.state.queuedActionForCurrentRunner?.actionType || null
+    };
+  });
+
+  expect(jumpState.handled).toBeTruthy();
+  expect(["PROCESSING_ACTION", "ANIMATING"]).toContain(jumpState.turnState);
+  expect(jumpState.queuedActionType === "JUMP_FORWARD" || jumpState.turnState === "ANIMATING").toBeTruthy();
+});
+
+test("guided reset keeps the workspace code and returns the level to Start Level", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    hooks.startLevel("move-to-target");
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24">
+          <next>
+            <block type="battlegorithms_move_forward"></block>
+          </next>
+        </block>
+      </xml>
+    `);
+  });
+
+  await expect(page.locator("#playResetButton")).toHaveText("Reset Level");
+  await page.locator("#playResetButton").click();
+  await expect(page.locator("#playResetButton")).toHaveText("Start Level");
+
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    const actor = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+    const workspace = hooks.getBlocklyWorkspace();
+    return {
+      mainGameState: hooks.app.state.mainGameState,
+      activeLevelResult: hooks.app.state.activeLevelResult,
+      actor: { x: actor.gridX, y: actor.gridY, initialX: actor.initialGridX, initialY: actor.initialGridY },
+      topBlocks: workspace.getTopBlocks(false).map((block) => ({
+        type: block.type,
+        childCount: block.getChildren(false).length
+      }))
+    };
+  });
+
+  expect(result.mainGameState).toBe("SETUP");
+  expect(result.activeLevelResult).toBe("NONE");
+  expect(result.actor).toEqual({ x: 1, y: 4, initialX: 1, initialY: 4 });
+  expect(result.topBlocks).toEqual([
+    {
+      type: "battlegorithms_on_each_turn",
+      childCount: 1
+    }
+  ]);
 });
 
 test("switching to free play restores the full toolbox", async ({ page }) => {
@@ -490,6 +776,7 @@ test("switching to free play restores the full toolbox", async ({ page }) => {
 
   expect(state.currentModeView).toBe("FREE_PLAY");
   expect(state.showModePicker).toBe(false);
+  expect([state.teams["1"].playDirection, state.teams["2"].playDirection].sort()).toEqual([-1, 1]);
   expect(toolbox).toContain("battlegorithms_jump_forward");
   expect(toolbox).toContain("battlegorithms_place_barrier");
   expect(toolbox).toContain("battlegorithms_move_toward");
@@ -504,10 +791,30 @@ test("switching to free play restores the full toolbox", async ({ page }) => {
   expect(moveTowardTargets).toEqual(["enemy flag", "my base", "human runner", "closest enemy"]);
 });
 
+test("free play re-randomizes team directions each time it is entered while keeping one of each direction", async ({ page }) => {
+  await page.goto("/");
+  const teamDirections = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.randomFn = () => 0.25;
+    const first = hooks.enterFreePlay().teams;
+    hooks.app.state.randomFn = () => 0.75;
+    const second = hooks.enterFreePlay().teams;
+    return {
+      first: [first["1"].playDirection, first["2"].playDirection],
+      second: [second["1"].playDirection, second["2"].playDirection]
+    };
+  });
+
+  expect([...teamDirections.first].sort()).toEqual([-1, 1]);
+  expect([...teamDirections.second].sort()).toEqual([-1, 1]);
+  expect(teamDirections.first).not.toEqual(teamDirections.second);
+});
+
 test("seeded free-play Move Toward programs choose the expected helper direction", async ({ page }) => {
   await page.goto("/");
   const actions = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.randomFn = () => 0.25;
     hooks.enterFreePlay();
     const actor = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
 
@@ -552,6 +859,7 @@ test("seeded free-play programs choose the expected new action and condition bra
   await page.goto("/");
   const actions = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.randomFn = () => 0.25;
     hooks.enterFreePlay();
     const actor = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
     const human = hooks.app.state.allRunners.find((runner) => runner.team === 1 && runner.isHumanControlled);
@@ -743,6 +1051,91 @@ test("free-play Freeze Opponents affects nearby enemies and consumes the team us
   expect(result.used).toBeTruthy();
   expect(result.nearbyFrozen).toBeTruthy();
   expect(result.farFrozen).toBeFalsy();
+});
+
+test("guided Level 20 uses freeze and avoids overlapping runners", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.startLevel("freeze-the-lane");
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24">
+          <next>
+            <block type="battlegorithms_if_area_freeze_ready_else">
+              <statement name="DO">
+                <block type="battlegorithms_freeze_opponents"></block>
+              </statement>
+              <statement name="ELSE">
+                <block type="battlegorithms_move_toward">
+                  <field name="TARGET">ENEMY_FLAG</field>
+                </block>
+              </statement>
+            </block>
+          </next>
+        </block>
+      </xml>
+    `);
+
+    const snapshots = [];
+    for (let tick = 0; tick < 120; tick += 1) {
+      hooks.processTurn();
+      const runnerCells = hooks.app.state.allRunners.map((runner) => `${runner.gridX},${runner.gridY}`);
+      snapshots.push({
+        tick,
+        freezeUsed: hooks.app.state.teamAreaFreezeUsed[1],
+        uniqueRunnerCells: new Set(runnerCells).size === runnerCells.length,
+        result: hooks.app.state.activeLevelResult
+      });
+      if (hooks.app.state.activeLevelResult === "PASSED" || hooks.app.state.activeLevelResult === "FAILED") {
+        break;
+      }
+    }
+
+    return {
+      result: hooks.app.state.activeLevelResult,
+      freezeUsed: hooks.app.state.teamAreaFreezeUsed[1],
+      everyTickUnique: snapshots.every((snapshot) => snapshot.uniqueRunnerCells)
+    };
+  });
+
+  expect(result.result).toBe("PASSED");
+  expect(result.freezeUsed).toBeTruthy();
+  expect(result.everyTickUnique).toBeTruthy();
+});
+
+test("same-team runners cannot step onto their own home flag in live play", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.enterFreePlay();
+
+    const playerRunner = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+    const playerFlag = hooks.app.state.gameFlags[1];
+    playerRunner.gridX = 1;
+    playerRunner.gridY = playerFlag.gridY;
+    playerRunner.pixelX = playerRunner.gridX * 50;
+    playerRunner.pixelY = playerRunner.gridY * 50;
+
+    hooks.app.state.mainGameState = "RUNNING";
+    hooks.app.state.currentTurnState = "PROCESSING_ACTION";
+    hooks.app.state.activeRunnerIndex = hooks.app.state.allRunners.indexOf(playerRunner);
+    hooks.app.state.queuedActionForCurrentRunner = {
+      runner: playerRunner,
+      actionType: "MOVE_BACKWARD",
+      targetGridX: 0,
+      targetGridY: playerFlag.gridY
+    };
+
+    hooks.processTurn();
+
+    return {
+      playerCell: { x: playerRunner.gridX, y: playerRunner.gridY },
+      flagCell: { x: playerFlag.gridX, y: playerFlag.gridY }
+    };
+  });
+
+  expect(result.playerCell).not.toEqual(result.flagCell);
 });
 
 test("test hooks expose deterministic level and tutorial controls", async ({ page }) => {

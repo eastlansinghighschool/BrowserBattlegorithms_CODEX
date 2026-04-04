@@ -1,11 +1,12 @@
 **Browser Battlegorithms: Revised Phased Development Plan (Aligning with Spec V1.1 and Current Refactor State)**
 
-**Current Implementation Status (2026-03-31)**
+**Current Implementation Status (2026-04-04)**
 
-* The project is currently in a playable **Phase 6a prototype** state.
-* The project now includes a playable **Phase 7 expansion** guided flow with four scaffolded levels, pass/fail evaluation, level unlock progression, and Blockly toolbox restriction by challenge.
+* The project now includes a playable **Phase 8 expansion** guided flow with thirty-five scaffolded levels, pass/fail evaluation, level unlock progression, and Blockly toolbox restriction by challenge.
 * The codebase now also has a modular `src/` architecture, Vite-based build workflow, command-line rule tests, and Playwright browser smoke tests.
-* Core gameplay, Blockly integration, NPC foundations, and the first guided learning layer are in place, including a first-run mode chooser, spotlight tutorials, a required `On Each Turn` event block, first one-branch conditional blocks, and a custom level picker popover; broader level content, more advanced Blockly blocks, save/load, and classroom-facing documentation are still future work.
+* Core gameplay, Blockly integration, NPC foundations, and the guided learning layer are in place, including a first-run mode chooser, spotlight tutorials, a required `On Each Turn` event block, beginner conditional blocks, a custom level picker popover, and a new **team-first runtime setup pipeline**.
+* Team identity is now a first-class architectural concern: active matches build explicit team state first, runners inherit `playDirection` from their team, and free play randomizes which team attacks left-to-right versus right-to-left on each load.
+* Phase 8 systems are now live: advanced boolean/value Blockly blocks, logic/comparison blocks, multi-ally shared-program guided levels, Local Storage workspace persistence, XML export/import, and first-pass sound feedback.
 
 **Phase 1: Specification Document for "Browser Battlegorithms" (Completed)**
 
@@ -114,6 +115,7 @@
 * Add a more explicit Blockly execution model for beginners, including a required event block and visible treatment of ignored early-phase code.
 * Replace one-button-per-level navigation with a scalable guided level picker UI.
 * Introduce the first conditional Blockly blocks through guided levels (currently `If enemy is in front`, `If barrier is in front`, and `If I have enemy flag`).
+* Refactor match setup so active teams, not ad-hoc runner overrides, are the authoritative source for direction, bases, flags, and visual identity.
 * **Testing / Verification Expectations:**
   * Add command-line tests for level pass conditions, block-unlock rules, and level configuration loading.
   * Add browser tests confirming the toolbox changes correctly by level, that onboarding overlays behave correctly, and that the guided navigation UI works as intended.
@@ -125,13 +127,13 @@
 
 * **Objective:** Expand the strategic possibilities with more advanced Blockly blocks, create more diverse levels, implement save/load functionality, and add initial "fun factor" elements.
 * **Key Tasks:**
-  * Add advanced Blockly blocks: `Move Towards [Target]`, `Is [Entity] on [Side of Map]?`, `Is enemy within [X] steps?`, `Die roll > X`, logical operators (`AND`, `OR`, `NOT`).
-  * Introduce the `playDirection value` block for more advanced students in free-play.
-  * Implement the "Area Effect Freeze" Blockly action for AI Allies, respecting the team-wide per-round limit.
-  * Create additional predefined maps for "free-play" mode.
+  * Add advanced Blockly blocks: shared-program boolean wrappers, logic operators (`AND`, `OR`, `NOT`), typed number fields, comparisons, `runner index`, `distance to [target]`, `random roll (1-6)`, and free-play `playDirection value`.
+  * Expand the guided campaign from 20 to 35 levels, including an advanced arc for richer sensing and multi-ally team strategy.
+  * Expand the runtime so one Blockly workspace can drive multiple allied runners with stable indices.
+  * Create additional maps sized for Phase 8 team tactics.
   * Implement robust Local Storage for saving/loading the current Blockly workspace.
   * Implement "Export AI Program (XML)" and "Import AI Program (XML)" features.
-  * Add basic sound effects for key game events.
+  * Add basic sound effects for key game events and a persisted sound toggle.
 * **Testing / Verification Expectations:**
   * Add semantic tests for every new Blockly block so generated actions and conditions map correctly into engine behavior.
   * Add round-trip tests for save/load and export/import, including malformed-input handling.

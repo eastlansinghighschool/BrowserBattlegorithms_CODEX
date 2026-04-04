@@ -106,6 +106,23 @@ button:disabled {
   margin-top: 0;
 }
 
+#blockly-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+#blockly-toolbar button {
+  padding: 7px 12px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: #3b6f90;
+  color: white;
+}
+
 #level-panel {
   margin: 14px 0;
   padding: 14px;
@@ -253,6 +270,145 @@ button:disabled {
   display: none;
 }
 
+#goal-burst-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 85;
+  overflow: visible;
+}
+
+.goal-burst {
+  position: fixed;
+  left: var(--burst-x);
+  top: var(--burst-y);
+  width: 0;
+  height: 0;
+}
+
+.goal-burst-halo,
+.goal-burst-ring,
+.goal-burst-particle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.goal-burst-halo {
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(var(--burst-fill-r), var(--burst-fill-g), var(--burst-fill-b), 0.7) 0%,
+    rgba(var(--burst-fill-r), var(--burst-fill-g), var(--burst-fill-b), 0.32) 32%,
+    rgba(var(--burst-fill-r), var(--burst-fill-g), var(--burst-fill-b), 0) 72%
+  );
+  animation: goal-burst-halo var(--burst-duration) ease-out forwards;
+}
+
+.goal-burst-ring {
+  border-radius: 999px;
+  border: 10px solid rgba(var(--burst-stroke-r), var(--burst-stroke-g), var(--burst-stroke-b), 0.95);
+  box-shadow: 0 0 36px rgba(var(--burst-fill-r), var(--burst-fill-g), var(--burst-fill-b), 0.42);
+}
+
+.goal-burst-ring-inner {
+  width: 120px;
+  height: 120px;
+  animation: goal-burst-ring-inner var(--burst-duration) ease-out forwards;
+}
+
+.goal-burst-ring-mid {
+  width: 180px;
+  height: 180px;
+  animation: goal-burst-ring-mid var(--burst-duration) ease-out forwards;
+}
+
+.goal-burst-ring-outer {
+  width: 240px;
+  height: 240px;
+  animation: goal-burst-ring-outer var(--burst-duration) ease-out forwards;
+}
+
+.goal-burst-particle {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(var(--burst-fill-r), var(--burst-fill-g), var(--burst-fill-b), 0.96);
+  border: 5px solid rgba(var(--burst-stroke-r), var(--burst-stroke-g), var(--burst-stroke-b), 0.95);
+  box-shadow: 0 0 18px rgba(var(--burst-fill-r), var(--burst-fill-g), var(--burst-fill-b), 0.65);
+  animation: goal-burst-particle var(--burst-duration) cubic-bezier(0.18, 0.8, 0.22, 1) forwards;
+  transform:
+    translate(-50%, -50%)
+    rotate(var(--particle-angle))
+    translateY(-12px);
+}
+
+@keyframes goal-burst-halo {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(3.2);
+  }
+}
+
+@keyframes goal-burst-ring-inner {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.22);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.6);
+  }
+}
+
+@keyframes goal-burst-ring-mid {
+  0% {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(0.16);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.35);
+  }
+}
+
+@keyframes goal-burst-ring-outer {
+  0% {
+    opacity: 0.82;
+    transform: translate(-50%, -50%) scale(0.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.1);
+  }
+}
+
+@keyframes goal-burst-particle {
+  0% {
+    opacity: 1;
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--particle-angle))
+      translateY(-14px)
+      scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--particle-angle))
+      translateY(-220px)
+      scale(1.25);
+  }
+}
+
 #tutorial-overlay.tutorial-overlay-active {
   display: block;
 }
@@ -286,6 +442,10 @@ button:disabled {
   z-index: 1002;
 }
 
+.tutorial-card-with-demo {
+  width: min(560px, calc(100vw - 32px));
+}
+
 .tutorial-card-centered {
   right: auto;
   left: 50%;
@@ -309,6 +469,37 @@ button:disabled {
   gap: 8px;
   justify-content: flex-end;
   margin-top: 14px;
+}
+
+.tutorial-demo {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f7f3e6;
+  border: 1px solid rgba(36, 64, 74, 0.14);
+}
+
+.tutorial-demo-title,
+.tutorial-demo-caption {
+  margin: 0;
+}
+
+.tutorial-demo-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.tutorial-demo-caption {
+  margin-top: 8px;
+  font-size: 0.92rem;
+  color: #4c5a63;
+}
+
+.tutorial-demo-blockly {
+  height: 220px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
 }
 
 .tutorial-actions-stacked {
@@ -338,5 +529,17 @@ button:disabled {
 
   #instructions {
     width: min(600px, 92vw);
+  }
+
+  .tutorial-card,
+  .tutorial-card-with-demo {
+    right: 16px;
+    left: 16px;
+    bottom: 16px;
+    width: auto;
+  }
+
+  .tutorial-demo-blockly {
+    height: 180px;
   }
 }

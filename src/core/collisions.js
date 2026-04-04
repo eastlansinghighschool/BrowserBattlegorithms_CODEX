@@ -1,6 +1,6 @@
 import { COLS, FROZEN_DURATION_TURNS } from "../config/constants.js";
 
-export function resolveCollision(state, attacker, defenderInCell, collisionX, collisionY) {
+export function resolveCollision(state, attacker, defenderInCell, collisionX, collisionY, attackerOriginCell) {
   const mapSideDefenderTeam = collisionX < COLS / 2 ? 1 : 2;
   let winner;
   let loser;
@@ -35,9 +35,15 @@ export function resolveCollision(state, attacker, defenderInCell, collisionX, co
     }
   }
 
+  const loserCell = {
+    x: attackerOriginCell?.x ?? attacker.gridX,
+    y: attackerOriginCell?.y ?? attacker.gridY
+  };
+
   return {
     winner,
     loser,
+    loserCell,
     attackerWon: winner === attacker,
     loserAvoidedFreezeDueToGrace: loser.isGracePeriod && !loser.isFrozen
   };

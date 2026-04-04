@@ -11,6 +11,7 @@
       <h1>Browser Battlegorithms - Phase 7 MVP</h1>
     </header>
     <div id="tutorial-overlay" aria-live="polite"></div>
+    <div id="goal-burst-overlay" aria-hidden="true"></div>
     <div id="game-container">
       <main id="simulation-region">
         <div id="canvas-container"></div>
@@ -32,6 +33,12 @@
       </main>
       <aside id="blockly-region">
         <h2>AI Ally Program</h2>
+        <div id="blockly-toolbar">
+          <button id="exportWorkspaceButton" type="button">Export XML</button>
+          <button id="importWorkspaceButton" type="button">Import XML</button>
+          <button id="soundToggleButton" type="button">Sound: On</button>
+          <input id="importWorkspaceInput" type="file" accept=".xml,text/xml" hidden>
+        </div>
         <div id="blocklyDiv" style="height: 400px; width: 100%;"></div>
       </aside>
     </div>

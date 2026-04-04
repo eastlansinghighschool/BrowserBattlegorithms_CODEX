@@ -6,19 +6,23 @@ import {
   BLOCK_TYPES,
   GAME_MODES,
   GAME_VIEW_MODES,
+  MIRROR_RUNNER_EMOJI_WITH_TRANSFORM,
   HUMAN_TURN_BEHAVIORS,
   LEVEL_RESULT,
   LEVEL_STATUS,
+  MAIN_GAME_STATES,
   AREA_FREEZE_DURATION_TURNS,
   MOVE_TOWARD_TARGETS,
   SENSOR_OBJECT_TYPES,
-  SENSOR_RELATION_TYPES
+  SENSOR_RELATION_TYPES,
+  USE_DIRECTIONAL_RUNNER_GLYPHS
 } from "../../src/config/constants.js";
 import { getLevelDefinitions } from "../../src/config/levels.js";
 import { buildMatch } from "../../src/testSupport/builders.js";
 import { evaluateCondition, evaluateSensorCondition } from "../../src/core/conditions.js";
 import {
   isCellBlockedByImpassables,
+  isCellBlockedForRunner,
   translateActionDecision,
   translateMoveTowardDecision
 } from "../../src/core/movement.js";
@@ -29,11 +33,16 @@ import { checkInvariants } from "../../src/core/invariants.js";
 import { calculateNpcType1Action } from "../../src/ai/npc/npcType1.js";
 import { calculateNpcType2Action } from "../../src/ai/npc/npcType2.js";
 import { createApp } from "../../src/core/state.js";
+import { buildRuntimeTeams, createRandomizedFreePlayTeamSetup } from "../../src/core/teams.js";
 import {
+  completeLevel,
   enterFreePlay,
   evaluateLevelProgress,
+  getLevelGoalCell,
   getLevelStateSnapshot,
   initializeLevelState,
+  resetCurrentLevel,
+  setGuidedHumanTurnBehavior,
   startLevel
 } from "../../src/core/levels.js";
 import {
@@ -42,6 +51,8 @@ import {
 } from "../../src/ai/blockly/blocks.js";
 import { getFirstRunnableAction, loadWorkspaceXml, updateBlocklyExecutionHints } from "../../src/ai/blockly/workspace.js";
 import { processTurnActions } from "../../src/core/turnEngine.js";
+import { Runner } from "../../src/entities/Runner.js";
+import { handleKeyInput } from "../../src/ui/controls.js";
 
 function buildBlocklyAppWithXml(xmlText) {
   registerBattleBlocklyBlocks();
@@ -49,6 +60,595 @@ function buildBlocklyAppWithXml(xmlText) {
   app.blocklyWorkspace = new Blockly.Workspace();
   loadWorkspaceXml(app, xmlText);
   return app;
+}
+
+const TEST_P5 = {
+  lerp(start, end, amount) {
+    return start + (end - start) * amount;
+  }
+};
+
+function buildSolutionXml(innerBlockXml) {
+  return `
+    <xml xmlns="https://developers.google.com/blockly/xml">
+      <block type="battlegorithms_on_each_turn" x="24" y="24">
+        <next>
+          ${innerBlockXml}
+        </next>
+      </block>
+    </xml>
+  `;
+}
+
+const GUIDED_LEVEL_REFERENCE_SOLUTIONS = {
+  "move-to-target": buildSolutionXml(`<block type="battlegorithms_move_forward"></block>`),
+  "reach-enemy-flag": buildSolutionXml(`<block type="battlegorithms_move_forward"></block>`),
+  "score-a-point": buildSolutionXml(`
+    <block type="battlegorithms_if_have_enemy_flag_else">
+      <statement name="DO">
+        <block type="battlegorithms_move_backward"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "barrier-detour": buildSolutionXml(`
+    <block type="battlegorithms_if_barrier_in_front_else">
+      <statement name="DO">
+        <block type="battlegorithms_move_down_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "mirror-forward": buildSolutionXml(`<block type="battlegorithms_move_forward"></block>`),
+  "sensor-barrier-branch": buildSolutionXml(`
+    <block type="battlegorithms_if_sensor_matches_else">
+      <field name="OBJECT">BARRIER</field>
+      <field name="RELATION">DIRECTLY_IN_FRONT</field>
+      <statement name="DO">
+        <block type="battlegorithms_move_down_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "watch-the-wall": buildSolutionXml(`
+    <block type="battlegorithms_if_sensor_matches_else">
+      <field name="OBJECT">EDGE_OR_WALL</field>
+      <field name="RELATION">DIRECTLY_IN_FRONT</field>
+      <statement name="DO">
+        <block type="battlegorithms_move_down_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "find-the-human": buildSolutionXml(`
+    <block type="battlegorithms_if_sensor_matches_else">
+      <field name="OBJECT">HUMAN_RUNNER</field>
+      <field name="RELATION">ANYWHERE_ABOVE</field>
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_if_sensor_matches_else">
+          <field name="OBJECT">HUMAN_RUNNER</field>
+          <field name="RELATION">ANYWHERE_FORWARD</field>
+          <statement name="DO">
+            <block type="battlegorithms_move_forward"></block>
+          </statement>
+          <statement name="ELSE">
+            <block type="battlegorithms_move_down_screen"></block>
+          </statement>
+        </block>
+      </statement>
+    </block>
+  `),
+  "find-the-enemy-flag": buildSolutionXml(`
+    <block type="battlegorithms_if_sensor_matches_else">
+      <field name="OBJECT">ENEMY_FLAG</field>
+      <field name="RELATION">ANYWHERE_ABOVE</field>
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "move-toward-flag": buildSolutionXml(`
+    <block type="battlegorithms_move_toward">
+      <field name="TARGET">ENEMY_FLAG</field>
+    </block>
+  `),
+  "bring-it-home": buildSolutionXml(`
+    <block type="battlegorithms_if_have_enemy_flag_else">
+      <statement name="DO">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">MY_BASE</field>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">ENEMY_FLAG</field>
+        </block>
+      </statement>
+    </block>
+  `),
+  "enemy-nearby": buildSolutionXml(`
+    <block type="battlegorithms_if_sensor_matches_else">
+      <field name="OBJECT">ENEMY_RUNNER</field>
+      <field name="RELATION">WITHIN_2</field>
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "jump-the-gap": buildSolutionXml(`
+    <block type="battlegorithms_jump_forward"></block>
+  `),
+  "jump-if-ready": buildSolutionXml(`
+    <block type="battlegorithms_if_can_jump_else">
+      <statement name="DO">
+        <block type="battlegorithms_jump_forward"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "build-the-barrier": buildSolutionXml(`<block type="battlegorithms_place_barrier"></block>`),
+  "stay-still-can-do-something": buildSolutionXml(`
+    <block type="battlegorithms_if_sensor_matches_else">
+      <field name="OBJECT">BARRIER</field>
+      <field name="RELATION">DIRECTLY_IN_FRONT</field>
+      <statement name="DO">
+        <block type="battlegorithms_stay_still"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "relay-race": buildSolutionXml(`
+    <block type="battlegorithms_if_teammate_has_flag_else">
+      <statement name="DO">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">HUMAN_RUNNER</field>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "my-side-their-side": buildSolutionXml(`
+    <block type="battlegorithms_if_on_my_side_else">
+      <statement name="DO">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+    </block>
+  `),
+  "freeze-the-lane": buildSolutionXml(`
+    <block type="battlegorithms_if_area_freeze_ready_else">
+      <statement name="DO">
+        <block type="battlegorithms_freeze_opponents"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">ENEMY_FLAG</field>
+        </block>
+      </statement>
+    </block>
+  `),
+  "closest-threat": buildSolutionXml(`
+    <block type="battlegorithms_move_toward">
+      <field name="TARGET">CLOSEST_ENEMY</field>
+    </block>
+  `),
+  "how-far-away": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_distance_to_target">
+              <field name="TARGET">CLOSEST_ENEMY</field>
+            </block>
+          </value>
+          <field name="OPERATOR">LTE</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">2</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "two-conditions-at-once": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_logic_and">
+          <value name="LEFT">
+            <block type="battlegorithms_value_compare">
+              <value name="LEFT">
+                <block type="battlegorithms_value_distance_to_target">
+                  <field name="TARGET">CLOSEST_ENEMY</field>
+                </block>
+              </value>
+              <field name="OPERATOR">LTE</field>
+              <value name="RIGHT">
+                <block type="battlegorithms_value_number">
+                  <field name="VALUE">2</field>
+                </block>
+              </value>
+            </block>
+          </value>
+          <value name="RIGHT">
+            <block type="battlegorithms_boolean_area_freeze_ready"></block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_freeze_opponents"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">ENEMY_FLAG</field>
+        </block>
+      </statement>
+    </block>
+  `),
+  "this-or-that": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_logic_or">
+          <value name="LEFT">
+            <block type="battlegorithms_boolean_on_enemy_side"></block>
+          </value>
+          <value name="RIGHT">
+            <block type="battlegorithms_boolean_sensor_matches">
+              <field name="OBJECT">ENEMY_RUNNER</field>
+              <field name="RELATION">WITHIN_2</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "flip-the-answer": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_logic_not">
+          <value name="VALUE">
+            <block type="battlegorithms_boolean_on_my_side"></block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "enemy-side-decision-making": buildSolutionXml(`
+    <block type="battlegorithms_if_on_enemy_side_else">
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "one-program-two-allies": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">0</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_stay_still"></block>
+      </statement>
+    </block>
+  `),
+  "index-jobs": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">0</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">ENEMY_FLAG</field>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+    </block>
+  `),
+  "first-two-defend": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">LT</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">2</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_up_screen"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "escort-the-carrier": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_boolean_teammate_has_flag"></block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_if_boolean_else">
+          <value name="BOOL">
+            <block type="battlegorithms_value_compare">
+              <value name="LEFT">
+                <block type="battlegorithms_value_runner_index"></block>
+              </value>
+              <field name="OPERATOR">EQ</field>
+              <value name="RIGHT">
+                <block type="battlegorithms_value_number">
+                  <field name="VALUE">0</field>
+                </block>
+              </value>
+            </block>
+          </value>
+          <statement name="DO">
+            <block type="battlegorithms_move_toward">
+              <field name="TARGET">MY_BASE</field>
+            </block>
+          </statement>
+          <statement name="ELSE">
+            <block type="battlegorithms_move_forward"></block>
+          </statement>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_stay_still"></block>
+      </statement>
+    </block>
+  `),
+  "closest-enemy-defender": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">0</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">ENEMY_FLAG</field>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">CLOSEST_ENEMY</field>
+        </block>
+      </statement>
+    </block>
+  `),
+  "freeze-support": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">1</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_freeze_opponents"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">ENEMY_FLAG</field>
+        </block>
+      </statement>
+    </block>
+  `),
+  "barrier-specialist": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">1</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_if_can_place_barrier_else">
+          <statement name="DO">
+            <block type="battlegorithms_place_barrier"></block>
+          </statement>
+          <statement name="ELSE">
+            <block type="battlegorithms_stay_still"></block>
+          </statement>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+    </block>
+  `),
+  "jump-team": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">0</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_if_can_jump_else">
+          <statement name="DO">
+            <block type="battlegorithms_jump_forward"></block>
+          </statement>
+          <statement name="ELSE">
+            <block type="battlegorithms_move_forward"></block>
+          </statement>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_move_down_screen"></block>
+      </statement>
+    </block>
+  `),
+  "advanced-scrimmage": buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">0</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_if_boolean_else">
+          <value name="BOOL">
+            <block type="battlegorithms_boolean_have_enemy_flag"></block>
+          </value>
+          <statement name="DO">
+            <block type="battlegorithms_move_toward">
+              <field name="TARGET">MY_BASE</field>
+            </block>
+          </statement>
+          <statement name="ELSE">
+            <block type="battlegorithms_move_toward">
+              <field name="TARGET">ENEMY_FLAG</field>
+            </block>
+          </statement>
+        </block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_stay_still"></block>
+      </statement>
+    </block>
+  `)
+};
+
+function runGuidedLevelWithSolution(levelId, xmlText) {
+  registerBattleBlocklyBlocks();
+  const app = createApp();
+  app.blocklyWorkspace = new Blockly.Workspace();
+  initializeLevelState(app);
+  startLevel(app, levelId);
+  loadWorkspaceXml(app, xmlText);
+
+  const trace = [];
+  for (let tick = 0; tick < 4000; tick += 1) {
+    const activeRunner = app.state.allRunners[app.state.activeRunnerIndex];
+    trace.push({
+      tick,
+      turn: app.state.currentTurnNumber,
+      runner: activeRunner?.id || null,
+      state: app.state.currentTurnState,
+      result: app.state.activeLevelResult
+    });
+
+    if (app.state.activeLevelResult === LEVEL_RESULT.PASSED || app.state.activeLevelResult === LEVEL_RESULT.FAILED) {
+      break;
+    }
+    processTurnActions(app, TEST_P5);
+  }
+
+  return { app, trace };
 }
 
 test("PvP setup creates four runners with two humans", () => {
@@ -69,6 +669,30 @@ test("movement helper blocks wall cells", () => {
   assert.equal(blocked, true);
 });
 
+test("own team cannot enter its home flag cell while the flag is at base", () => {
+  const app = buildMatch();
+  const playerRunner = app.state.allRunners.find((runner) => runner.team === 1);
+  const enemyRunner = app.state.allRunners.find((runner) => runner.team === 2);
+  const playerFlag = app.state.gameFlags[1];
+
+  assert.equal(
+    isCellBlockedForRunner(playerFlag.gridX, playerFlag.gridY, app.state.barriers, app.state.gameMap, app.state, playerRunner),
+    true
+  );
+  assert.equal(
+    isCellBlockedForRunner(playerFlag.gridX, playerFlag.gridY, app.state.barriers, app.state.gameMap, app.state, enemyRunner),
+    false
+  );
+
+  playerFlag.isAtBase = false;
+  playerFlag.carriedByRunnerId = "runner_2_Npc1";
+
+  assert.equal(
+    isCellBlockedForRunner(playerFlag.gridX, playerFlag.gridY, app.state.barriers, app.state.gameMap, app.state, playerRunner),
+    false
+  );
+});
+
 test("translateActionDecision converts move-forward into a target cell", () => {
   const app = buildMatch();
   const runner = app.state.allRunners[1];
@@ -85,9 +709,43 @@ test("collision resolves in favor of defender side", () => {
   attacker.gridY = 3;
   defender.gridX = 9;
   defender.gridY = 3;
-  const outcome = resolveCollision(app.state, attacker, defender, 9, 3);
+  const outcome = resolveCollision(app.state, attacker, defender, 9, 3, { x: 8, y: 3 });
   assert.equal(outcome.winner.id, defender.id);
   assert.equal(outcome.loser.id, attacker.id);
+  assert.deepEqual(outcome.loserCell, { x: 8, y: 3 });
+});
+
+test("collision processing leaves one runner on the collision cell and freezes the loser on the origin cell", () => {
+  const app = buildMatch();
+  const attacker = app.state.allRunners[0];
+  const defender = app.state.allRunners[2];
+
+  attacker.gridX = 8;
+  attacker.gridY = 3;
+  attacker.pixelX = attacker.gridX * 50;
+  attacker.pixelY = attacker.gridY * 50;
+  defender.gridX = 9;
+  defender.gridY = 3;
+  defender.pixelX = defender.gridX * 50;
+  defender.pixelY = defender.gridY * 50;
+
+  app.state.mainGameState = MAIN_GAME_STATES.RUNNING;
+  app.state.currentTurnState = "PROCESSING_ACTION";
+  app.state.activeRunnerIndex = app.state.allRunners.indexOf(attacker);
+  app.state.queuedActionForCurrentRunner = {
+    runner: attacker,
+    actionType: AI_ACTION_TYPES.MOVE_FORWARD,
+    targetGridX: 9,
+    targetGridY: 3
+  };
+
+  processTurnActions(app, TEST_P5);
+
+  assert.deepEqual({ x: defender.gridX, y: defender.gridY }, { x: 9, y: 3 });
+  assert.deepEqual({ x: attacker.gridX, y: attacker.gridY }, { x: 8, y: 3 });
+  assert.equal(attacker.isFrozen, true);
+  assert.equal(defender.isFrozen, false);
+  assert.equal(checkInvariants(app.state), true);
 });
 
 test("flag pickup and scoring update team score", () => {
@@ -103,6 +761,11 @@ test("flag pickup and scoring update team score", () => {
   const scored = checkForScoring(app.state, runner);
   assert.equal(scored, true);
   assert.equal(app.state.teamScores[1], 1);
+  assert.equal(runner.hasEnemyFlag, false);
+  assert.equal(enemyFlag.carriedByRunnerId, null);
+  assert.equal(enemyFlag.gridX, enemyFlag.initialGridX);
+  assert.equal(enemyFlag.gridY, enemyFlag.initialGridY);
+  assert.equal(enemyFlag.isAtBase, true);
 });
 
 test("resetRound restores runners and clears barriers", () => {
@@ -122,6 +785,26 @@ test("invariants pass for default match state", () => {
   assert.equal(checkInvariants(app.state), true);
 });
 
+test("runtime teams reject matches where both teams share the same playDirection", () => {
+  assert.throws(
+    () => buildRuntimeTeams({
+      player: { playDirection: 1, runners: [] },
+      opponent: { playDirection: 1, runners: [] }
+    }),
+    /different playDirection/
+  );
+});
+
+test("free-play team setup randomizes which team attacks right or left while keeping one of each", () => {
+  const leftFirst = createRandomizedFreePlayTeamSetup(GAME_MODES.PLAYER_VS_PLAYER, () => 0.25);
+  const rightFirst = createRandomizedFreePlayTeamSetup(GAME_MODES.PLAYER_VS_PLAYER, () => 0.75);
+
+  assert.equal(leftFirst.player.playDirection, 1);
+  assert.equal(leftFirst.opponent.playDirection, -1);
+  assert.equal(rightFirst.player.playDirection, -1);
+  assert.equal(rightFirst.opponent.playDirection, 1);
+});
+
 test("npc type 1 returns a legal action shape", () => {
   const app = buildMatch({ currentGameMode: GAME_MODES.PLAYER_VS_NPC });
   const npc = app.state.allRunners.find((runner) => runner.isNPC);
@@ -138,7 +821,7 @@ test("npc type 2 returns a legal action shape", () => {
 
 test("level definitions load with the expected starter levels", () => {
   const levels = getLevelDefinitions();
-  assert.equal(levels.length, 20);
+  assert.equal(levels.length, 35);
   assert.deepEqual(
     levels.map((level) => level.id),
     [
@@ -161,23 +844,38 @@ test("level definitions load with the expected starter levels", () => {
       "stay-still-can-do-something",
       "relay-race",
       "my-side-their-side",
-      "freeze-the-lane"
+      "freeze-the-lane",
+      "closest-threat",
+      "how-far-away",
+      "two-conditions-at-once",
+      "this-or-that",
+      "flip-the-answer",
+      "enemy-side-decision-making",
+      "one-program-two-allies",
+      "index-jobs",
+      "first-two-defend",
+      "escort-the-carrier",
+      "closest-enemy-defender",
+      "freeze-support",
+      "barrier-specialist",
+      "jump-team",
+      "advanced-scrimmage"
     ]
   );
 });
 
-test("guided mode initializes with level 1 available and later levels locked", () => {
+test("guided mode initializes with all levels available during testing", () => {
   const app = createApp();
   initializeLevelState(app);
   const snapshot = getLevelStateSnapshot(app);
   assert.equal(snapshot.currentModeView, GAME_VIEW_MODES.GUIDED_LEVELS);
   assert.equal(snapshot.currentLevelId, "move-to-target");
   assert.equal(snapshot.levelProgress["move-to-target"], LEVEL_STATUS.AVAILABLE);
-  assert.equal(snapshot.levelProgress["reach-enemy-flag"], LEVEL_STATUS.LOCKED);
-  assert.equal(snapshot.levelProgress["score-a-point"], LEVEL_STATUS.LOCKED);
-  assert.equal(snapshot.levelProgress["barrier-detour"], LEVEL_STATUS.LOCKED);
-  assert.equal(snapshot.levelProgress["mirror-forward"], LEVEL_STATUS.LOCKED);
-  assert.equal(snapshot.levelProgress["freeze-the-lane"], LEVEL_STATUS.LOCKED);
+  assert.equal(snapshot.levelProgress["reach-enemy-flag"], LEVEL_STATUS.AVAILABLE);
+  assert.equal(snapshot.levelProgress["score-a-point"], LEVEL_STATUS.AVAILABLE);
+  assert.equal(snapshot.levelProgress["barrier-detour"], LEVEL_STATUS.AVAILABLE);
+  assert.equal(snapshot.levelProgress["mirror-forward"], LEVEL_STATUS.AVAILABLE);
+  assert.equal(snapshot.levelProgress["freeze-the-lane"], LEVEL_STATUS.AVAILABLE);
   assert.equal(snapshot.humanTurnBehavior, HUMAN_TURN_BEHAVIORS.AUTO_SKIP);
 });
 
@@ -259,12 +957,27 @@ test("later guided levels expose the intended Move Toward and advanced condition
 
   const humanPractice = levels.find((level) => level.id === "human-runner-practice");
   assert.equal(humanPractice.humanTurnBehavior, HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT);
+  assert.equal(humanPractice.failureCondition.maxTurns, 200);
 
   const freezeLane = levels.find((level) => level.id === "freeze-the-lane");
   assert.ok(freezeLane.toolboxBlockTypes.includes(BLOCK_TYPES.FREEZE_OPPONENTS));
   assert.ok(freezeLane.toolboxBlockTypes.includes(BLOCK_TYPES.IF_AREA_FREEZE_READY_ELSE));
   assert.deepEqual(freezeLane.sensorObjectTypes, [SENSOR_OBJECT_TYPES.ENEMY_RUNNER]);
   assert.deepEqual(freezeLane.sensorRelationTypes, [SENSOR_RELATION_TYPES.WITHIN_2, SENSOR_RELATION_TYPES.WITHIN_3]);
+});
+
+test("level 6 tutorial includes the generic sensor demo preview", () => {
+  const level6 = getLevelDefinitions().find((level) => level.id === "sensor-barrier-branch");
+  const demoStep = level6.tutorialSteps.find((step) => step.id === "level-6-generic-sensor");
+  assert.match(demoStep.demoBlocklyXml, /battlegorithms_if_sensor_matches_else/);
+  assert.equal(demoStep.demoTitle, "Example sensor branch");
+});
+
+test("level 12 setup makes Move Toward use both horizontal and vertical movement", () => {
+  const { app } = runGuidedLevelWithSolution("bring-it-home", GUIDED_LEVEL_REFERENCE_SOLUTIONS["bring-it-home"]);
+  const allyHistory = app.state.runnerActionHistory["runner_1_AI_AllyP1"] || [];
+  assert.ok(allyHistory.includes(AI_ACTION_TYPES.MOVE_FORWARD));
+  assert.ok(allyHistory.includes(AI_ACTION_TYPES.MOVE_UP_SCREEN));
 });
 
 test("level 1 passes when the ally reaches the target cell and unlocks level 2", () => {
@@ -280,6 +993,10 @@ test("level 1 passes when the ally reaches the target cell and unlocks level 2",
   assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
   assert.equal(app.state.levelProgress["move-to-target"], LEVEL_STATUS.PASSED);
   assert.equal(app.state.levelProgress["reach-enemy-flag"], LEVEL_STATUS.AVAILABLE);
+  assert.deepEqual(app.state.goalBurstEffect && {
+    cellX: app.state.goalBurstEffect.cellX,
+    cellY: app.state.goalBurstEffect.cellY
+  }, { cellX: 4, cellY: 4 });
 });
 
 test("level 2 passes when the ally reaches the enemy flag", () => {
@@ -317,9 +1034,62 @@ test("level 3 passes when team 1 scores a point and unlocks level 4", () => {
   assert.equal(app.state.levelProgress["barrier-detour"], LEVEL_STATUS.AVAILABLE);
 });
 
+test("level 3 goal marker stays on the home flag after the point is scored", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  app.state.levelProgress["reach-enemy-flag"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["score-a-point"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "score-a-point");
+
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 2;
+  actor.gridY = 4;
+  actor.hasEnemyFlag = true;
+  assert.deepEqual(getLevelGoalCell(app), { x: 1, y: 4 });
+
+  actor.hasEnemyFlag = false;
+  actor.gridX = 1;
+  app.state.teamScores[1] = 1;
+  assert.deepEqual(getLevelGoalCell(app), { x: 1, y: 4 });
+});
+
 test("level 3 turn limit allows the intended out-and-back route", () => {
   const level3 = getLevelDefinitions().find((level) => level.id === "score-a-point");
   assert.equal(level3.failureCondition.maxTurns, 20);
+});
+
+test("guided auto-skip freezes the parked human runner for a clearer idle visual", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  startLevel(app, "score-a-point");
+
+  const human = app.state.allRunners.find((runner) => runner.id === "runner_1_HumanP1");
+  assert.equal(human.isFrozen, true);
+  assert.equal(human.isAutoSkipFrozen, true);
+  assert.equal(human.frozenTurnsRemaining, Number.POSITIVE_INFINITY);
+
+  setGuidedHumanTurnBehavior(app, HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT);
+  assert.equal(human.isFrozen, false);
+  assert.equal(human.isAutoSkipFrozen, false);
+  assert.equal(human.frozenTurnsRemaining, 0);
+});
+
+test("completing a guided score level anchors the goal burst to the scoring square", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  app.state.levelProgress["score-a-point"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "score-a-point");
+
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 1;
+  actor.gridY = 4;
+  app.state.teamScores[1] = 1;
+
+  completeLevel(app, LEVEL_RESULT.PASSED, "win_condition_met");
+  assert.deepEqual(app.state.goalBurstEffect && {
+    cellX: app.state.goalBurstEffect.cellX,
+    cellY: app.state.goalBurstEffect.cellY
+  }, { cellX: 1, cellY: 4 });
 });
 
 test("human practice level requires reaching the goal after a special action", () => {
@@ -337,6 +1107,78 @@ test("human practice level requires reaching the goal after a special action", (
 
   const result = evaluateLevelProgress(app);
   assert.deepEqual(result, { result: LEVEL_RESULT.PASSED, reason: "win_condition_met" });
+});
+
+test("human practice level accepts both J and F as jump keys", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  Object.keys(app.state.levelProgress).forEach((levelId, index) => {
+    app.state.levelProgress[levelId] = index === 9 ? LEVEL_STATUS.AVAILABLE : LEVEL_STATUS.PASSED;
+  });
+
+  startLevel(app, "human-runner-practice");
+  const human = app.state.allRunners.find((runner) => runner.id === "runner_1_HumanP1");
+  app.state.activeRunnerIndex = app.state.allRunners.indexOf(human);
+  const acceptedJ = handleKeyInput(app, "j");
+  assert.equal(acceptedJ, true);
+  assert.equal(app.state.queuedActionForCurrentRunner.actionType, AI_ACTION_TYPES.JUMP_FORWARD);
+
+  startLevel(app, "human-runner-practice");
+  const restartedHuman = app.state.allRunners.find((runner) => runner.id === "runner_1_HumanP1");
+  app.state.activeRunnerIndex = app.state.allRunners.indexOf(restartedHuman);
+  const acceptedF = handleKeyInput(app, "f");
+  assert.equal(acceptedF, true);
+  assert.equal(app.state.queuedActionForCurrentRunner.actionType, AI_ACTION_TYPES.JUMP_FORWARD);
+});
+
+test("resetting a guided level preserves workspace code and restores the ready state", () => {
+  registerBattleBlocklyBlocks();
+  const app = createApp();
+  app.blocklyWorkspace = new Blockly.Workspace();
+  initializeLevelState(app);
+  loadWorkspaceXml(app, buildSolutionXml(`<block type="battlegorithms_move_forward"></block>`));
+  startLevel(app, "move-to-target");
+
+  const actor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  actor.gridX = 3;
+  actor.gridY = 4;
+
+  resetCurrentLevel(app);
+
+  const restoredActor = app.state.allRunners.find((runner) => runner.id === "runner_1_AI_AllyP1");
+  const xmlText = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(app.blocklyWorkspace));
+
+  assert.equal(app.state.mainGameState, MAIN_GAME_STATES.SETUP);
+  assert.equal(app.state.activeLevelResult, LEVEL_RESULT.NONE);
+  assert.equal(restoredActor.gridX, restoredActor.initialGridX);
+  assert.equal(restoredActor.gridY, restoredActor.initialGridY);
+  assert.match(xmlText, /battlegorithms_move_forward/);
+});
+
+test("level 20 keeps the midfield enemy runner authored as an NPC", () => {
+  const app = createApp();
+  initializeLevelState(app);
+  Object.keys(app.state.levelProgress).forEach((levelId) => {
+    app.state.levelProgress[levelId] = LEVEL_STATUS.PASSED;
+  });
+  app.state.levelProgress["freeze-the-lane"] = LEVEL_STATUS.AVAILABLE;
+
+  startLevel(app, "freeze-the-lane");
+
+  const laneEnemy = app.state.allRunners.find((runner) => runner.id === "runner_2_Npc1");
+  assert.equal(laneEnemy.isNPC, true);
+  assert.equal(laneEnemy.runnerRole, "npc");
+});
+
+test("level 20 reference solution uses freeze, passes, and never overlaps runners", () => {
+  const { app } = runGuidedLevelWithSolution(
+    "freeze-the-lane",
+    GUIDED_LEVEL_REFERENCE_SOLUTIONS["freeze-the-lane"]
+  );
+
+  assert.equal(app.state.activeLevelResult, LEVEL_RESULT.PASSED);
+  assert.ok(app.state.runnerActionHistory.runner_1_AI_AllyP1.includes(AI_ACTION_TYPES.FREEZE_OPPONENTS));
+  assert.equal(checkInvariants(app.state), true);
 });
 
 test("build the barrier level passes when the target barrier cell is occupied", () => {
@@ -390,6 +1232,23 @@ test("level 5 teaches playDirection from the opposite side of the map", () => {
   assert.equal(app.state.levelProgress["sensor-barrier-branch"], LEVEL_STATUS.AVAILABLE);
 });
 
+test("runner display emoji follows current playDirection for active and frozen states", () => {
+  const ally = new Runner(1, 1, 1, false, "ally_test", false);
+  assert.equal(ally.getDisplayEmoji(), USE_DIRECTIONAL_RUNNER_GLYPHS ? "🏃🏿‍♂️‍➡️" : "🏃🏿‍♂️");
+  assert.equal(ally.shouldMirrorEmojiDisplay(), MIRROR_RUNNER_EMOJI_WITH_TRANSFORM);
+  ally.playDirection = -1;
+  assert.equal(ally.getDisplayEmoji(), "🏃🏿‍♂️");
+  assert.equal(ally.shouldMirrorEmojiDisplay(), false);
+  ally.setFrozen(2);
+  assert.equal(ally.getDisplayEmoji(), "🧎🏾‍♂️");
+
+  const human = new Runner(1, 1, 1, true, "human_test", false);
+  assert.equal(human.shouldMirrorEmojiDisplay(), MIRROR_RUNNER_EMOJI_WITH_TRANSFORM);
+  human.playDirection = -1;
+  assert.equal(human.getDisplayEmoji(), "🏃🏾‍♀️");
+  assert.equal(human.shouldMirrorEmojiDisplay(), false);
+});
+
 test("generic sensing levels unlock sequentially through the first sensing track", () => {
   const app = createApp();
   initializeLevelState(app);
@@ -415,6 +1274,69 @@ test("generic sensing levels unlock sequentially through the first sensing track
   assert.equal(app.state.levelProgress["find-the-human"], LEVEL_STATUS.AVAILABLE);
 });
 
+test("find-the-human uses an open support target beside the human", () => {
+  const level = getLevelDefinitions().find((entry) => entry.id === "find-the-human");
+  assert.deepEqual(level.winCondition.targetCell, { x: 5, y: 2 });
+  const humanSetup = level.setup.teams.player.runners.find((runner) => runner.slot === "human");
+  assert.equal(humanSetup.gridX, 6);
+  assert.equal(humanSetup.gridY, 2);
+  assert.ok(level.setup.barriers.some((barrier) => barrier.gridX === 7 && barrier.gridY === 2));
+  assert.ok(level.tutorialSteps.some((step) => step.demoBlocklyXml?.includes("ANYWHERE_FORWARD")));
+
+  const app = createApp();
+  initializeLevelState(app);
+  app.state.levelProgress["move-to-target"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["reach-enemy-flag"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["score-a-point"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["barrier-detour"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["mirror-forward"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["sensor-barrier-branch"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["watch-the-wall"] = LEVEL_STATUS.PASSED;
+  app.state.levelProgress["find-the-human"] = LEVEL_STATUS.AVAILABLE;
+  startLevel(app, "find-the-human");
+
+  const occupiedRunner = app.state.allRunners.find((runner) => runner.gridX === 5 && runner.gridY === 2);
+  assert.equal(occupiedRunner, undefined);
+});
+
+test("relay-race uses an open support target beside the human flag carrier", () => {
+  const level = getLevelDefinitions().find((entry) => entry.id === "relay-race");
+  assert.deepEqual(level.winCondition.targetCell, { x: 6, y: 3 });
+  const humanSetup = level.setup.teams.player.runners.find((runner) => runner.slot === "human");
+  assert.equal(humanSetup.gridX, 6);
+  assert.equal(humanSetup.gridY, 2);
+
+  const app = createApp();
+  initializeLevelState(app);
+  startLevel(app, "relay-race");
+
+  const occupiedRunner = app.state.allRunners.find((runner) => runner.gridX === 6 && runner.gridY === 3);
+  assert.equal(occupiedRunner, undefined);
+});
+
+test("every non-human guided level has a reference Blockly solvability solution", () => {
+  const nonHumanLevels = getLevelDefinitions().filter((level) => level.humanTurnBehavior !== HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT);
+  const missing = nonHumanLevels
+    .map((level) => level.id)
+    .filter((levelId) => !GUIDED_LEVEL_REFERENCE_SOLUTIONS[levelId]);
+
+  assert.deepEqual(missing, []);
+});
+
+test("reference Blockly programs solve every non-human guided level", () => {
+  const nonHumanLevels = getLevelDefinitions().filter((level) => level.humanTurnBehavior !== HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT);
+
+  for (const level of nonHumanLevels) {
+    const xmlText = GUIDED_LEVEL_REFERENCE_SOLUTIONS[level.id];
+    const { app, trace } = runGuidedLevelWithSolution(level.id, xmlText);
+    assert.equal(
+      app.state.activeLevelResult,
+      LEVEL_RESULT.PASSED,
+      `Level ${level.id} did not pass. Final turn=${app.state.currentTurnNumber}, state=${app.state.currentTurnState}, lastReason=${app.state.lastLevelResultReason}, traceTail=${JSON.stringify(trace.slice(-8))}`
+    );
+  }
+});
+
 test("guided levels fail when the turn limit is exceeded", () => {
   const app = createApp();
   initializeLevelState(app);
@@ -430,6 +1352,7 @@ test("free play keeps full toolbox access and leaves level progress intact", () 
   const app = createApp();
   initializeLevelState(app);
   app.state.levelProgress["move-to-target"] = LEVEL_STATUS.PASSED;
+  app.state.randomFn = () => 0.75;
   enterFreePlay(app);
 
   const toolbox = getToolboxBlockTypesForMode(app, null);
@@ -441,6 +1364,8 @@ test("free play keeps full toolbox access and leaves level progress intact", () 
   assert.ok(toolbox.includes(BLOCK_TYPES.IF_CAN_JUMP_ELSE));
   assert.ok(toolbox.includes(BLOCK_TYPES.IF_AREA_FREEZE_READY_ELSE));
   assert.equal(app.state.levelProgress["move-to-target"], LEVEL_STATUS.PASSED);
+  assert.equal(app.state.teams[1].playDirection, -1);
+  assert.equal(app.state.teams[2].playDirection, 1);
 });
 
 test("Move Toward enemy flag chooses a forward step in the open lane", () => {

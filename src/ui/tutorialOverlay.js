@@ -1,3 +1,5 @@
+import * as Blockly from "blockly";
+
 const STORAGE_KEY = "bba_tutorial_seen_v1";
 
 function getStoredTutorialSeen() {
@@ -44,6 +46,41 @@ function resolveSpotlightRect(selector) {
     width: rect.width + 16,
     height: rect.height + 16
   };
+}
+
+function disposeTutorialDemoWorkspace(app) {
+  if (app.tutorialDemoWorkspace) {
+    app.tutorialDemoWorkspace.dispose();
+    app.tutorialDemoWorkspace = null;
+  }
+}
+
+function renderTutorialDemoWorkspace(app, step) {
+  const demoContainer = document.getElementById("tutorial-demo-blockly");
+  if (!demoContainer || !step?.demoBlocklyXml) {
+    disposeTutorialDemoWorkspace(app);
+    return;
+  }
+
+  disposeTutorialDemoWorkspace(app);
+  app.tutorialDemoWorkspace = Blockly.inject(demoContainer, {
+    readOnly: true,
+    scrollbars: true,
+    move: {
+      drag: false,
+      wheel: false,
+      scrollbars: true
+    },
+    zoom: {
+      controls: false,
+      wheel: false,
+      pinch: false
+    },
+    trashcan: false
+  });
+
+  const xml = Blockly.utils.xml.textToDom(step.demoBlocklyXml);
+  Blockly.Xml.domToWorkspace(xml, app.tutorialDemoWorkspace);
 }
 
 export function initializeTutorialState(app) {
@@ -95,6 +132,7 @@ export function closeTutorial(app, markSeen = true) {
   }
   app.state.activeTutorial = null;
   app.state.spotlightRect = null;
+  disposeTutorialDemoWorkspace(app);
 }
 
 export function nextTutorialStep(app) {
@@ -171,6 +209,7 @@ export function renderTutorialOverlay(app) {
   }
 
   if (app.state.showModePicker) {
+    disposeTutorialDemoWorkspace(app);
     overlay.classList.add("tutorial-overlay-active");
     overlay.innerHTML = `
       <div class="tutorial-scrim"></div>
@@ -189,6 +228,7 @@ export function renderTutorialOverlay(app) {
 
   const activeTutorial = app.state.activeTutorial;
   if (!activeTutorial) {
+    disposeTutorialDemoWorkspace(app);
     overlay.innerHTML = "";
     overlay.classList.remove("tutorial-overlay-active");
     return;
@@ -199,15 +239,25 @@ export function renderTutorialOverlay(app) {
   const spotlightStyle = rect
     ? `style="top:${rect.top}px;left:${rect.left}px;width:${rect.width}px;height:${rect.height}px;"`
     : "";
+  const hasDemo = Boolean(step.demoBlocklyXml);
+  const demoTitle = step.demoTitle ? `<p class="tutorial-demo-title">${step.demoTitle}</p>` : "";
+  const demoCaption = step.demoCaption ? `<p class="tutorial-demo-caption">${step.demoCaption}</p>` : "";
 
   overlay.classList.add("tutorial-overlay-active");
   overlay.innerHTML = `
     <div class="tutorial-scrim"></div>
     ${rect ? `<div class="tutorial-spotlight" ${spotlightStyle}></div>` : ""}
-    <div class="tutorial-card">
+    <div class="tutorial-card ${hasDemo ? "tutorial-card-with-demo" : ""}">
       <p class="tutorial-step-count">Step ${activeTutorial.currentIndex + 1} of ${activeTutorial.steps.length}</p>
       <h3>${step.title}</h3>
       <p>${step.body}</p>
+      ${hasDemo ? `
+        <div class="tutorial-demo">
+          ${demoTitle}
+          <div id="tutorial-demo-blockly" class="tutorial-demo-blockly" style="${step.demoHeight ? `height:${step.demoHeight}px;` : ""}"></div>
+          ${demoCaption}
+        </div>
+      ` : ""}
       <div class="tutorial-actions">
         <button data-tutorial-action="back" ${activeTutorial.currentIndex === 0 ? "disabled" : ""}>Back</button>
         <button data-tutorial-action="skip">Got It</button>
@@ -215,4 +265,5 @@ export function renderTutorialOverlay(app) {
       </div>
     </div>
   `;
+  renderTutorialDemoWorkspace(app, step);
 }

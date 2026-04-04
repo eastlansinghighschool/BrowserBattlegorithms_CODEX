@@ -1,4 +1,5 @@
-import { AI_ACTION_TYPES, CELL_TYPE, COLS, MOVE_TOWARD_TARGETS, ROWS, TEAM_CONFIG } from "../config/constants.js";
+import { AI_ACTION_TYPES, CELL_TYPE, COLS, MOVE_TOWARD_TARGETS, ROWS } from "../config/constants.js";
+import { getTeamBaseCellType, getTeamFlagHome } from "./teams.js";
 
 const RANDOM_MOVE_ACTIONS = [
   AI_ACTION_TYPES.MOVE_FORWARD,
@@ -33,10 +34,62 @@ export function isCellBlockedByImpassables(targetGridX, targetGridY, barriersArr
   return isCellOccupiedByBarrier(targetGridX, targetGridY, barriersArray);
 }
 
+export function isFlagAtHomeCell(state, targetGridX, targetGridY, teamId = null) {
+  if (!state?.gameFlags) {
+    return false;
+  }
+
+  const teamIds = teamId === null ? Object.keys(state.gameFlags) : [teamId];
+  return teamIds.some((candidateTeamId) => {
+    const flag = state.gameFlags[candidateTeamId];
+    return (
+      flag &&
+      flag.isAtBase &&
+      !flag.carriedByRunnerId &&
+      flag.gridX === targetGridX &&
+      flag.gridY === targetGridY
+    );
+  });
+}
+
+export function isOwnFlagHomeCellBlockedForRunner(state, runner, targetGridX, targetGridY) {
+  if (!runner) {
+    return false;
+  }
+
+  return isFlagAtHomeCell(state, targetGridX, targetGridY, runner.team);
+}
+
+export function isCellBlockedForRunner(targetGridX, targetGridY, barriersArray, gameMap, state, runner) {
+  return (
+    isCellBlockedByImpassables(targetGridX, targetGridY, barriersArray, gameMap) ||
+    isOwnFlagHomeCellBlockedForRunner(state, runner, targetGridX, targetGridY)
+  );
+}
+
+export function isCellBlockedForBarrierPlacement(targetGridX, targetGridY, barriersArray, gameMap, state) {
+  return (
+    isCellBlockedByImpassables(targetGridX, targetGridY, barriersArray, gameMap) ||
+    isFlagAtHomeCell(state, targetGridX, targetGridY)
+  );
+}
+
 export function getForwardCell(runner, steps = 1) {
   return {
     x: runner.gridX + runner.playDirection * steps,
     y: runner.gridY
+  };
+}
+
+export function getOwnFlagApproachCell(state, runner) {
+  const flagHome = getTeamFlagHome(state, runner.team);
+  if (!flagHome) {
+    return { x: runner.gridX, y: runner.gridY };
+  }
+
+  return {
+    x: flagHome.x + runner.playDirection,
+    y: flagHome.y
   };
 }
 
@@ -56,7 +109,7 @@ function getEnemyFlagTarget(state, runner) {
 }
 
 function getMyBaseTarget(state, runner) {
-  const baseCellType = TEAM_CONFIG[runner.team].baseCellType;
+  const baseCellType = getTeamBaseCellType(state, runner.team);
   let bestCell = null;
   let bestDistance = Number.POSITIVE_INFINITY;
 
@@ -91,7 +144,7 @@ function getHumanRunnerTarget(state, runner) {
 
 function getClosestEnemyTarget(state, runner) {
   const enemies = state.allRunners
-    .filter((candidate) => candidate.team !== runner.team && !candidate.isFrozen)
+    .filter((candidate) => candidate.team !== runner.team)
     .sort((a, b) => {
       const distanceA = Math.abs(a.gridX - runner.gridX) + Math.abs(a.gridY - runner.gridY);
       const distanceB = Math.abs(b.gridX - runner.gridX) + Math.abs(b.gridY - runner.gridY);

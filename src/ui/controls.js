@@ -1,14 +1,18 @@
 import {
   AI_ACTION_TYPES,
   GAME_VIEW_MODES,
+  LEVEL_RESULT,
   MAIN_GAME_STATES,
+  P1_KEY_ALIASES,
   P1_KEY_BINDINGS,
   P2_KEY_BINDINGS
 } from "../config/constants.js";
+import { getWorkspaceXmlText, importWorkspaceXml } from "../ai/blockly/workspace.js";
 import { setBlocklyEditable } from "../ai/blockly/workspace.js";
 import { enterFreePlay, goToNextLevel, startLevel, resetCurrentLevel } from "../core/levels.js";
 import { resetGameToSetup, startGame } from "../core/setup.js";
 import { handlePlayerInput } from "../core/turnEngine.js";
+import { playSound, setSoundEnabled } from "./sound.js";
 
 export function getAnimationSpeedFactorFromSliderValue(sliderValue) {
   const numericValue = Number.parseInt(sliderValue, 10);
@@ -22,6 +26,10 @@ export function bindControls(app) {
   const speedValueDisplay = document.getElementById("speedValue");
   const controlsPanel = document.getElementById("game-controls");
   const instructionsPanel = document.getElementById("instructions");
+  const exportWorkspaceButton = document.getElementById("exportWorkspaceButton");
+  const importWorkspaceButton = document.getElementById("importWorkspaceButton");
+  const importWorkspaceInput = document.getElementById("importWorkspaceInput");
+  const soundToggleButton = document.getElementById("soundToggleButton");
   if (speedSlider && speedValueDisplay) {
     const updateSpeed = () => {
       app.state.animationSpeedFactor = getAnimationSpeedFactorFromSliderValue(speedSlider.value);
@@ -46,7 +54,11 @@ export function bindControls(app) {
   if (playResetButton) {
     playResetButton.addEventListener("click", () => {
       if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
-        if (app.state.mainGameState === MAIN_GAME_STATES.RUNNING) {
+        if (
+          app.state.mainGameState === MAIN_GAME_STATES.RUNNING ||
+          app.state.activeLevelResult === LEVEL_RESULT.PASSED ||
+          app.state.activeLevelResult === LEVEL_RESULT.FAILED
+        ) {
           setBlocklyEditable(app, true);
           resetCurrentLevel(app);
         } else {
@@ -72,6 +84,49 @@ export function bindControls(app) {
       app.syncUi();
     });
   }
+
+  if (exportWorkspaceButton) {
+    exportWorkspaceButton.addEventListener("click", () => {
+      const xmlText = getWorkspaceXmlText(app);
+      const blob = new Blob([xmlText], { type: "text/xml;charset=utf-8" });
+      const link = document.createElement("a");
+      const modeLabel = app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS
+        ? app.state.currentLevelId || "guided-level"
+        : "free-play";
+      link.href = URL.createObjectURL(blob);
+      link.download = `${modeLabel}.xml`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+  }
+
+  if (importWorkspaceButton && importWorkspaceInput) {
+    importWorkspaceButton.addEventListener("click", () => {
+      importWorkspaceInput.click();
+    });
+    importWorkspaceInput.addEventListener("change", async () => {
+      const file = importWorkspaceInput.files?.[0];
+      if (!file) {
+        return;
+      }
+      const xmlText = await file.text();
+      importWorkspaceXml(app, xmlText);
+      app.syncUi();
+      importWorkspaceInput.value = "";
+    });
+  }
+
+  if (soundToggleButton) {
+    const syncSoundButton = () => {
+      soundToggleButton.textContent = `Sound: ${app.state.soundEnabled ? "On" : "Off"}`;
+    };
+    soundToggleButton.addEventListener("click", () => {
+      setSoundEnabled(app.state, !app.state.soundEnabled);
+      syncSoundButton();
+      playSound(app.state, "flag-pickup");
+    });
+    syncSoundButton();
+  }
 }
 
 export function handleKeyInput(app, rawKey) {
@@ -89,6 +144,7 @@ export function handleKeyInput(app, rawKey) {
   }
 
   const key = `${rawKey || ""}`.toLowerCase();
+  const isP1JumpKey = key === P1_KEY_BINDINGS.JUMP || (P1_KEY_ALIASES.JUMP || []).includes(key);
   let actionData = {};
   let validKeyPress = false;
 
@@ -97,7 +153,7 @@ export function handleKeyInput(app, rawKey) {
     else if (key === P1_KEY_BINDINGS.DOWN) { actionData = { type: "MOVE", dy: 1 }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.LEFT) { actionData = { type: "MOVE", dx: -1 }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.RIGHT) { actionData = { type: "MOVE", dx: 1 }; validKeyPress = true; }
-    else if (key === P1_KEY_BINDINGS.JUMP) { actionData = { type: AI_ACTION_TYPES.JUMP_FORWARD }; validKeyPress = true; }
+    else if (isP1JumpKey) { actionData = { type: AI_ACTION_TYPES.JUMP_FORWARD }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.PLACE_BARRIER) { actionData = { type: AI_ACTION_TYPES.PLACE_BARRIER_FORWARD }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.STAY_STILL) { actionData = { type: AI_ACTION_TYPES.STAY_STILL }; validKeyPress = true; }
   } else if (currentPlayer.team === 2) {

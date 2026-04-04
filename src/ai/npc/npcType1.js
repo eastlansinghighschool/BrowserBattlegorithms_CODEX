@@ -1,16 +1,16 @@
-import { AI_ACTION_TYPES, TEAM_CONFIG } from "../../config/constants.js";
-import { isCellBlockedByImpassables } from "../../core/movement.js";
+import { AI_ACTION_TYPES } from "../../config/constants.js";
+import { getOwnFlagApproachCell, isCellBlockedForRunner } from "../../core/movement.js";
 
 export function calculateNpcType1Action(npcRunner, state) {
   let targetX;
   let targetY;
   const enemyTeamId = npcRunner.team === 1 ? 2 : 1;
-  const ownTeamId = npcRunner.team;
   const enemyFlag = state.gameFlags[enemyTeamId];
 
   if (npcRunner.hasEnemyFlag) {
-    targetX = TEAM_CONFIG[ownTeamId].initialFlagPos.x;
-    targetY = TEAM_CONFIG[ownTeamId].initialFlagPos.y;
+    const ownFlagApproach = getOwnFlagApproachCell(state, npcRunner);
+    targetX = ownFlagApproach.x;
+    targetY = ownFlagApproach.y;
   } else if (enemyFlag && !enemyFlag.carriedByRunnerId) {
     targetX = enemyFlag.gridX;
     targetY = enemyFlag.gridY;
@@ -42,13 +42,19 @@ export function calculateNpcType1Action(npcRunner, state) {
 
   let nextX = npcRunner.gridX + preferredDx;
   let nextY = npcRunner.gridY + preferredDy;
-  if ((preferredDx !== 0 || preferredDy !== 0) && !isCellBlockedByImpassables(nextX, nextY, state.barriers, state.gameMap)) {
+  if (
+    (preferredDx !== 0 || preferredDy !== 0) &&
+    !isCellBlockedForRunner(nextX, nextY, state.barriers, state.gameMap, state, npcRunner)
+  ) {
     return { actionType: "MOVE", dx: preferredDx, dy: preferredDy };
   }
 
   nextX = npcRunner.gridX + fallbackDx;
   nextY = npcRunner.gridY + fallbackDy;
-  if ((fallbackDx !== 0 || fallbackDy !== 0) && !isCellBlockedByImpassables(nextX, nextY, state.barriers, state.gameMap)) {
+  if (
+    (fallbackDx !== 0 || fallbackDy !== 0) &&
+    !isCellBlockedForRunner(nextX, nextY, state.barriers, state.gameMap, state, npcRunner)
+  ) {
     return { actionType: "MOVE", dx: fallbackDx, dy: fallbackDy };
   }
 

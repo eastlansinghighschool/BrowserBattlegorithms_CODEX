@@ -8,6 +8,10 @@ export const P1_KEY_BINDINGS = {
   STAY_STILL: "x"
 };
 
+export const P1_KEY_ALIASES = {
+  JUMP: ["j"]
+};
+
 export const P2_KEY_BINDINGS = {
   UP: "o",
   DOWN: "l",

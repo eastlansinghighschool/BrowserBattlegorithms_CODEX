@@ -25,12 +25,12 @@ export function setPlayButtonState(app) {
     if (app.state.mainGameState === "RUNNING") {
       button.textContent = "Reset Level";
     } else if (app.state.activeLevelResult === LEVEL_RESULT.PASSED) {
-      button.textContent = "Replay Level";
+      button.textContent = "Reset Level";
       if (nextLevelButton && getNextAvailableLevelId(app)) {
         nextLevelButton.style.display = "";
       }
     } else if (app.state.activeLevelResult === LEVEL_RESULT.FAILED) {
-      button.textContent = "Retry Level";
+      button.textContent = "Reset Level";
     } else {
       button.textContent = "Start Level";
     }

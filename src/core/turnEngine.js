@@ -3,6 +3,7 @@ import {
   AI_ACTION_TYPES,
   AREA_FREEZE_DURATION_TURNS,
   AREA_FREEZE_RADIUS,
+  CELL_SIZE,
   GAME_VIEW_MODES,
   HUMAN_TURN_BEHAVIORS,
   MAIN_GAME_STATES,
@@ -15,7 +16,8 @@ import {
   getBarrierAtCell,
   getForwardCell,
   getRunnerAtCell,
-  isCellBlockedByImpassables,
+  isCellBlockedForBarrierPlacement,
+  isCellBlockedForRunner,
   translateActionDecision
 } from "./movement.js";
 import { checkForFlagPickup, checkForScoring } from "./scoring.js";
@@ -25,6 +27,8 @@ import { calculateNpcType2Action } from "../ai/npc/npcType2.js";
 import { getAIAllyAction } from "../ai/blockly/interpreter.js";
 import { Barrier } from "../entities/Barrier.js";
 import { evaluateLevelProgress } from "./levels.js";
+import { triggerGoalBurst } from "./levels.js";
+import { playSound } from "../ui/sound.js";
 
 function sync(app) {
   if (typeof app.syncUi === "function") {
@@ -42,6 +46,19 @@ function recordRunnerAction(state, runner, actionType) {
   if (!state.runnerActionHistory[runner.id].includes(actionType)) {
     state.runnerActionHistory[runner.id].push(actionType);
   }
+}
+
+function snapRunnerToCell(runner, gridX, gridY) {
+  runner.gridX = gridX;
+  runner.gridY = gridY;
+  runner.pixelX = gridX * CELL_SIZE;
+  runner.pixelY = gridY * CELL_SIZE;
+  runner.targetGridX = gridX;
+  runner.targetGridY = gridY;
+  runner.targetPixelX = runner.pixelX;
+  runner.targetPixelY = runner.pixelY;
+  runner.isMoving = false;
+  runner.isBouncing = false;
 }
 
 function applyAreaFreeze(state, actionRunner) {
@@ -139,12 +156,16 @@ function handleFrozenRunnerTurn(app, runner) {
 
 function handleActionCompletion(app, completedRunner) {
   const { state } = app;
+  const carriedFlagBefore = completedRunner.hasEnemyFlag;
   if (completedRunner.isGracePeriod) {
     completedRunner.isGracePeriod = false;
   }
 
   if (!completedRunner.isBouncing) {
     checkForFlagPickup(state, completedRunner);
+    if (!carriedFlagBefore && completedRunner.hasEnemyFlag) {
+      playSound(state, "flag-pickup");
+    }
     const levelResult = evaluateLevelProgress(app);
     if (levelResult) {
       sync(app);
@@ -152,6 +173,14 @@ function handleActionCompletion(app, completedRunner) {
     }
 
     if (completedRunner.hasEnemyFlag && checkForScoring(state, completedRunner)) {
+      playSound(state, "score");
+      if (state.currentModeView === GAME_VIEW_MODES.FREE_PLAY) {
+        triggerGoalBurst(
+          state,
+          { x: completedRunner.gridX, y: completedRunner.gridY },
+          completedRunner.team
+        );
+      }
       const postScoreLevelResult = evaluateLevelProgress(app);
       if (postScoreLevelResult) {
         sync(app);
@@ -229,7 +258,7 @@ function executeQueuedAction(app, actionRunner, queuedAction) {
       if (
         actionRunner.canPlaceBarrier &&
         !actionRunner.activeBarrierId &&
-        !isCellBlockedByImpassables(targetGridX, targetGridY, state.barriers, state.gameMap) &&
+        !isCellBlockedForBarrierPlacement(targetGridX, targetGridY, state.barriers, state.gameMap, state) &&
         !getRunnerAtCell(targetGridX, targetGridY, state.allRunners)
       ) {
         const barrier = new Barrier(targetGridX, targetGridY, actionRunner.id);
@@ -242,6 +271,7 @@ function executeQueuedAction(app, actionRunner, queuedAction) {
     }
     case AI_ACTION_TYPES.FREEZE_OPPONENTS: {
       applyAreaFreeze(state, actionRunner);
+      playSound(state, "freeze");
       actionCompletedImmediately = true;
       break;
     }
@@ -263,7 +293,7 @@ function executeQueuedAction(app, actionRunner, queuedAction) {
     }
 
     if (!actionResolvedAndAnimating) {
-      if (isCellBlockedByImpassables(targetGridX, targetGridY, state.barriers, state.gameMap)) {
+      if (isCellBlockedForRunner(targetGridX, targetGridY, state.barriers, state.gameMap, state, actionRunner)) {
         if (isJump) {
           actionRunner.canJump = false;
         }
@@ -272,27 +302,23 @@ function executeQueuedAction(app, actionRunner, queuedAction) {
       } else {
         const runnerInTargetCell = getRunnerAtCell(targetGridX, targetGridY, state.allRunners, actionRunner.id);
         if (runnerInTargetCell) {
-          if (runnerInTargetCell.team === actionRunner.team) {
+          if (runnerInTargetCell.team === actionRunner.team || runnerInTargetCell.isFrozen) {
             if (isJump) {
               actionRunner.canJump = false;
             }
             actionRunner.startBounceAnimation(targetGridX, targetGridY);
             actionResolvedAndAnimating = true;
-          } else if (runnerInTargetCell.isFrozen) {
-            if (isJump) {
-              actionRunner.startJumpAnimation(targetGridX, targetGridY);
-            } else {
-              actionRunner.startMoveAnimation(targetGridX, targetGridY);
-            }
-            actionResolvedAndAnimating = true;
           } else {
-            resolveCollision(state, actionRunner, runnerInTargetCell, targetGridX, targetGridY);
-            actionRunner.gridX = targetGridX;
-            actionRunner.gridY = targetGridY;
-            actionRunner.pixelX = actionRunner.gridX * 50;
-            actionRunner.pixelY = actionRunner.gridY * 50;
-            actionRunner.isMoving = false;
-            actionRunner.isBouncing = false;
+            const outcome = resolveCollision(
+              state,
+              actionRunner,
+              runnerInTargetCell,
+              targetGridX,
+              targetGridY,
+              { x: actionRunner.gridX, y: actionRunner.gridY }
+            );
+            snapRunnerToCell(outcome.winner, targetGridX, targetGridY);
+            snapRunnerToCell(outcome.loser, outcome.loserCell.x, outcome.loserCell.y);
             if (isJump) {
               actionRunner.canJump = false;
             }

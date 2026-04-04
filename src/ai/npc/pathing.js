@@ -1,7 +1,7 @@
 import { AI_ACTION_TYPES } from "../../config/constants.js";
-import { isCellBlockedByImpassables } from "../../core/movement.js";
+import { isCellBlockedForRunner } from "../../core/movement.js";
 
-export function calculateMoveTowardsTarget(runner, targetX, targetY, barriers, gameMap) {
+export function calculateMoveTowardsTarget(runner, targetX, targetY, barriers, gameMap, state = null) {
   const deltaX = targetX - runner.gridX;
   const deltaY = targetY - runner.gridY;
   if (deltaX === 0 && deltaY === 0) {
@@ -27,13 +27,19 @@ export function calculateMoveTowardsTarget(runner, targetX, targetY, barriers, g
 
   let nextX = runner.gridX + preferredDx;
   let nextY = runner.gridY + preferredDy;
-  if ((preferredDx !== 0 || preferredDy !== 0) && !isCellBlockedByImpassables(nextX, nextY, barriers, gameMap)) {
+  if (
+    (preferredDx !== 0 || preferredDy !== 0) &&
+    !isCellBlockedForRunner(nextX, nextY, barriers, gameMap, state, runner)
+  ) {
     return { actionType: "MOVE", dx: preferredDx, dy: preferredDy };
   }
 
   nextX = runner.gridX + fallbackDx;
   nextY = runner.gridY + fallbackDy;
-  if ((fallbackDx !== 0 || fallbackDy !== 0) && !isCellBlockedByImpassables(nextX, nextY, barriers, gameMap)) {
+  if (
+    (fallbackDx !== 0 || fallbackDy !== 0) &&
+    !isCellBlockedForRunner(nextX, nextY, barriers, gameMap, state, runner)
+  ) {
     return { actionType: "MOVE", dx: fallbackDx, dy: fallbackDy };
   }
 

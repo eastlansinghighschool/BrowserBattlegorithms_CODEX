@@ -11,6 +11,7 @@ import {
   getCurrentLevel,
   getNextAvailableLevelId,
   goToNextLevel,
+  resetCurrentLevel,
   setGuidedHumanTurnBehavior,
   startLevel
 } from "../core/levels.js";
@@ -99,7 +100,15 @@ export function bindLevelPanel(app) {
     } else if (target.dataset.action === "next-level") {
       goToNextLevel(app);
     } else if (target.dataset.action === "start-current-level") {
-      startLevel(app, app.state.currentLevelId);
+      if (
+        app.state.activeLevelResult === LEVEL_RESULT.PASSED ||
+        app.state.activeLevelResult === LEVEL_RESULT.FAILED ||
+        app.state.mainGameState === "RUNNING"
+      ) {
+        resetCurrentLevel(app);
+      } else {
+        startLevel(app, app.state.currentLevelId);
+      }
     } else if (target.dataset.action === "replay-tutorial") {
       app.hooks.startCurrentLevelTutorial?.(true);
     } else if (target.dataset.levelId) {
@@ -188,7 +197,13 @@ export function renderLevelPanel(app) {
         ${(currentLevel.tips || []).length ? `<div class="level-tips"><strong>Tips:</strong><ul>${currentLevel.tips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul></div>` : ""}
         ${resultMessage}
         <div class="level-actions">
-          <button data-action="start-current-level">${app.state.activeLevelResult === LEVEL_RESULT.PASSED ? "Replay Level" : app.state.activeLevelResult === LEVEL_RESULT.FAILED ? "Retry Level" : "Start Level"}</button>
+          <button data-action="start-current-level">${
+            app.state.mainGameState === "RUNNING" ||
+            app.state.activeLevelResult === LEVEL_RESULT.PASSED ||
+            app.state.activeLevelResult === LEVEL_RESULT.FAILED
+              ? "Reset Level"
+              : "Start Level"
+          }</button>
           <button data-action="replay-tutorial">Show Tutorial</button>
           ${nextLevelButton}
         </div>

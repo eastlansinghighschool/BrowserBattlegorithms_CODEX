@@ -14,6 +14,7 @@ import {
 
 export function createInitialState() {
   return {
+    teams: {},
     allRunners: [],
     gameFlags: {},
     barriers: [],
@@ -42,12 +43,15 @@ export function createInitialState() {
     currentSensorRelationTypes: [],
     currentMoveTowardTargetTypes: [],
     autoStayHumanRunnerIds: [],
+    activeTeamSetup: null,
+    activeFlagSetup: null,
     setupBarriers: [],
-    displayFlagOverrides: null,
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
     tutorialSeen: {},
     activeTutorial: null,
     spotlightRect: null,
+    goalBurstEffect: null,
+    soundEnabled: true,
     showModePicker: true,
     randomFn: Math.random,
     runnerActionHistory: {}

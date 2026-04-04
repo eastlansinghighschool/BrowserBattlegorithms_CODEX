@@ -1,6 +1,6 @@
 # **Browser Battlegorithms \- Game Specification V1.1**
 
-**Implementation Status Note (2026-04-01):** The live codebase is currently a Phase 7 expansion build with a modular ES-module architecture, Vite-based build workflow, command-line rule tests, and Playwright browser smoke tests. The implemented project now includes guided onboarding, spotlight tutorials, a required Blockly `On Each Turn` event block, first conditional Blockly blocks, a generic sensing family with object/relation dropdowns, a parameterized `Move Toward [target]` helper block, a broader free-play sandbox block set including `Move Randomly` and `Freeze Opponents`, and a custom guided-level picker. This specification still describes the broader target product vision; not every later-phase feature below is implemented yet.
+**Implementation Status Note (2026-04-04):** The live codebase is currently a Phase 8 expansion build with a modular ES-module architecture, Vite-based build workflow, command-line rule tests, and Playwright browser smoke tests. The implemented project now includes guided onboarding, spotlight tutorials, a required Blockly `On Each Turn` event block, beginner and advanced Blockly layers, a generic sensing family with object/relation dropdowns, a parameterized `Move Toward [target]` helper block, multi-ally shared-program guided levels, Local Storage workspace persistence, XML export/import, a sound toggle, and first-pass event sounds. This specification still describes the broader target product vision; not every later-phase feature below is implemented yet.
 
 ## **1\. Introduction & Educational Goals**
 
@@ -40,7 +40,7 @@ This game is primarily aimed at students in introductory computer science course
 * **Return to Base:** After capturing the enemy flag, a runner must carry it back to their own team's starting base location on the map.  
 * **Scoring a Point:** A point is scored when a runner carrying the enemy flag successfully reaches any cell within their team's designated starting base area.  
 * **Winning the Game:** The first team to reach a predetermined number of points (e.g., 2 points) wins the match.  
-* **Round Reset:** After a point is scored, the game resets for a new round: flags are returned to their starting base positions, all runners are reset to their starting positions and states (e.g., hasEnemyFlag \= false, isFrozen \= false, canJump \= true, canPlaceBarrier \= true, team areaFreezeUsedThisRound \= false). The map itself remains the same for the duration of a match.
+* **Round Reset:** After a point is scored, the game resets for a new round: flags are returned to their starting base positions, all runners are reset to their starting positions and states (e.g., hasEnemyFlag \= false, isFrozen \= false, canJump \= true, canPlaceBarrier \= true, team areaFreezeUsedThisRound \= false). The map itself remains the same for the duration of a match. The captured flag should immediately return to its home base so the next round begins from a clear state.
 
 2.4. Turn Structure
 
@@ -73,13 +73,16 @@ The game proceeds in turns.
   * Example map dimensions: 12 columns wide by 8 rows high.  
   * Maps will contain open floor cells and impassable wall cells (visualized by color).  
 * **No Dynamic Generation:** Maps are static for the duration of a match.  
-* **Team Starting Areas/Bases:** Each team has a designated starting "base" area on opposite sides of the map (e.g., Team 1 in columns 0-1, Team 2 in columns mapWidth-2 to mapWidth-1). These areas are where their flag starts and where the enemy flag must be returned to score.  
+* **Team Starting Areas/Bases:** Each team has a designated starting "base" area on opposite sides of the map. These areas are where their flag starts and where the enemy flag must be returned to score. In the current architecture, the active team's home side and base area are derived from team configuration rather than hard-coded runner defaults.  
+* **Dynamic Free-Play Side Assignment:** Free play may randomize which team starts on the left versus right, but the two teams must always occupy opposite sides and therefore use opposite `playDirection` values.  
 * **Jails:** Simple designated cells, visually distinct (e.g., outlined), typically in corners.
 
 **2.6. Play Direction (Internal Concept)**
 
 * For simplicity in Blockly, blocks like "Move Forward" will be provided.  
-* The game engine will internally manage a playDirection for each team (e.g., Team 1 aims for increasing X, Team 2 for decreasing X, or vice-versa depending on the map layout). "Move Forward" blocks will use this internal playDirection to determine the actual change in X or Y coordinates. This concept will not be directly exposed to beginner students via blocks initially.
+* The game engine now treats `playDirection` as a **team-level property**. Runners inherit their effective forward direction from their active team during match setup rather than authoring an independent value per runner.  
+* Opposing teams must always use different `playDirection` values, and setup should fail fast if both teams point the same way.  
+* "Move Forward" blocks use this team-derived playDirection to determine the actual change in X or Y coordinates. This concept will not be directly exposed to beginner students via blocks initially.
 
 ## **3\. Game Entities**
 
@@ -163,7 +166,7 @@ As each runner's action is processed in the alternating sequence described in 2.
 2. **Barrier Placement:**  
    * If Place Barrier is planned and canPlaceBarrier is true:  
      * Determine target cell "Forward."  
-     * Validate: Cell must be on map, not a wall, not occupied by another barrier or any runner.  
+     * Validate: Cell must be on map, not a wall, not occupied by another barrier or any runner, and not be a home-flag cell that still has a flag sitting on it.  
      * If valid: Place barrier, set runner's canPlaceBarrier to false.  
      * If invalid: Action fails, runner effectively stays still.  
      * This runner's turn ends.  
@@ -180,6 +183,7 @@ As each runner's action is processed in the alternating sequence described in 2.
      * Is target cell on map?  
      * Is target cell a wall?  
      * Is target cell occupied by a barrier?  
+     * Is target cell the runner's own home-flag cell while that flag is still at home? If so, the move is illegal. Runners defend around their flag rather than standing on top of it.  
      * If Jump: Is canJump true? (If so, consume canJump now, regardless of move success). Is landing cell valid as per above? (Intermediate cell is ignored for obstacles).  
      * If any of these checks fail, the move fails. The runner "bounces back" (remains in their original cell for this turn). An animation may show the attempt and return. This runner's turn ends.  
    * **Teammate Occupancy Check:**  
@@ -187,8 +191,10 @@ As each runner's action is processed in the alternating sequence described in 2.
      * *Note: This simplified rule prevents adjacent swaps but is easier to visualize and implement.*  
    * **Opponent Occupancy / Collision Flagging:**  
      * If the target cell is valid AND is currently occupied by an *active (not frozen) opposing runner*: The move is provisionally successful (runner moves to the cell). A collision is flagged for immediate resolution (see Section 5).  
-   * **Moving to Empty/Frozen Cell:**  
-     * If the target cell is valid AND empty, OR occupied by a *frozen* opposing runner: The runner successfully moves to the target cell. Update runner's x,y. Animate the movement. This runner's turn ends.  
+   * **Moving to Empty Cell:**  
+     * If the target cell is valid AND empty: The runner successfully moves to the target cell. Update runner's x,y. Animate the movement. This runner's turn ends.  
+   * **Frozen Occupancy Check:**  
+     * If the target cell is occupied by a *frozen* opposing runner, the move fails and the runner bounces back. Frozen runners still occupy space on the board.  
 5. **Immediate Collision Resolution (if flagged in step 4c):**  
    * If a collision was flagged, resolve it immediately as per Section 5\. Update statuses (isFrozen, frozenTurnsRemaining, flag position if dropped).  
 6. **Immediate Flag Pickup (if applicable):**  
@@ -212,9 +218,9 @@ When an active runner attempts to move into a cell occupied by an active opposin
      * Becomes isFrozen \= true.  
      * frozenTurnsRemaining is set (e.g., to 2 turns).  
      * If carrying a flag, the flag is immediately returned to its team's starting base location and its carriedByRunnerId is set to null.  
-     * The losing **runner moves into the collision cell** and becomes frozen there. Both the winner (who remains in or moves into the collision cell) and the (now frozen) loser will temporarily occupy this same cell. The attacker's attempted move to the cell is considered completed, regardless of whether they won or lost the collision, but if they lost, they arrive in a frozen state.  
+     * The collision resolves to **one occupied cell only**. The winner ends on the collision cell. The loser is frozen and moved to the attacker's origin cell, so the board never shows stacked runners on the same square.  
    * **Winner:** Remains on the collision cell (their move to it was successful).  
-4. **Passing Through Frozen Opponents:** As stated in 4.1.d, active runners can move into and through cells occupied by isFrozen opposing runners. The frozen runner remains in place.
+4. **Frozen Opponents Still Block Space:** Active runners cannot move into or through cells occupied by frozen opposing runners. The frozen runner remains in place until they thaw.
 
 ## **6\. Blockly Interface & Blocks**
 
@@ -249,6 +255,14 @@ When an active runner attempts to move into a cell occupied by an active opposin
 * **Logic:** If-Then, If-Then-Else, AND, OR, NOT.  
 * **Sensing (Later/Advanced):** My X, My Y, Enemy Flag X, Enemy Flag Y, My Base X, My Base Y. The playDirection value block is deferred for advanced use.
 
+**Current Advanced Blockly Additions**
+
+* `If [boolean]`
+* `If [boolean] / else`
+* boolean value blocks for sensor matches, resource checks, flag possession, teammate flag possession, and side-of-map checks
+* number/value blocks for typed numbers, runner index, distance to target, random roll, and playDirection
+* comparison block with `=`, `!=`, `<`, `<=`, `>`, `>=`
+
 **6.3. Blockly Execution Model (Current Guided MVP Clarification)**
 
 * Student programs currently start from a required `On Each Turn` block.
@@ -259,6 +273,7 @@ When an active runner attempts to move into a cell occupied by an active opposin
 * The generic sensing blocks use an object dropdown (such as barrier, edge or wall, enemy flag, or human runner) and a relation dropdown (such as directly in front, anywhere above, or within N spaces).  
 * Distance-based sensing currently uses Manhattan distance so "within N spaces" means the number of ideal grid moves to reach that target if nothing blocked the path.  
 * Free play currently exposes a broader Blockly sandbox than guided mode, including readiness checks (`If I can jump`, `If I can place barrier`, `If Area Freeze is ready`), teammate/territory checks, `Move Randomly`, and `Freeze Opponents`.  
+* The advanced campaign now also allows one Blockly workspace to control multiple allied runners, with `runner index` used to assign different jobs inside one shared program.
 * Additional sequential actions after that first action are intentionally ignored for now and should be visually marked as such so beginners are not misled.  
 * Unattached blocks elsewhere in the workspace are also ignored and should be visually indicated as inactive.
 

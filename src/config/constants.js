@@ -1,6 +1,6 @@
 import { CELL_TYPE, MAPS, DEFAULT_MAP_KEY } from "./maps.js";
 import { GAME_MODES, DEFAULT_GAME_MODE } from "./gameModes.js";
-import { P1_KEY_BINDINGS, P2_KEY_BINDINGS } from "./keybindings.js";
+import { P1_KEY_ALIASES, P1_KEY_BINDINGS, P2_KEY_BINDINGS } from "./keybindings.js";
 
 export const COLS = 12;
 export const ROWS = 8;
@@ -12,6 +12,7 @@ export const POINTS_TO_WIN = 2;
 export const FROZEN_DURATION_TURNS = 3;
 export const AREA_FREEZE_DURATION_TURNS = 2;
 export const AREA_FREEZE_RADIUS = 2;
+export const UNLOCK_ALL_GUIDED_LEVELS_FOR_TESTING = true;
 
 export const NPC_BEHAVIORS = {
   SIMPLE_TARGET: "SIMPLE_TARGET",
@@ -40,6 +41,15 @@ export const MOVE_TOWARD_TARGETS = {
   MY_BASE: "MY_BASE",
   HUMAN_RUNNER: "HUMAN_RUNNER",
   CLOSEST_ENEMY: "CLOSEST_ENEMY"
+};
+
+export const ADVANCED_COMPARE_OPERATORS = {
+  EQ: "EQ",
+  NEQ: "NEQ",
+  LT: "LT",
+  LTE: "LTE",
+  GT: "GT",
+  GTE: "GTE"
 };
 
 export const SENSOR_OBJECT_TYPES = {
@@ -125,6 +135,8 @@ export const BLOCK_TYPES = {
   IF_ON_MY_SIDE_ELSE: "battlegorithms_if_on_my_side_else",
   IF_ON_ENEMY_SIDE: "battlegorithms_if_on_enemy_side",
   IF_ON_ENEMY_SIDE_ELSE: "battlegorithms_if_on_enemy_side_else",
+  IF_BOOLEAN: "battlegorithms_if_boolean",
+  IF_BOOLEAN_ELSE: "battlegorithms_if_boolean_else",
   MOVE_TOWARD: "battlegorithms_move_toward",
   MOVE_FORWARD: "battlegorithms_move_forward",
   MOVE_BACKWARD: "battlegorithms_move_backward",
@@ -134,60 +146,91 @@ export const BLOCK_TYPES = {
   JUMP_FORWARD: "battlegorithms_jump_forward",
   STAY_STILL: "battlegorithms_stay_still",
   PLACE_BARRIER: "battlegorithms_place_barrier",
-  FREEZE_OPPONENTS: "battlegorithms_freeze_opponents"
+  FREEZE_OPPONENTS: "battlegorithms_freeze_opponents",
+  BOOLEAN_SENSOR_MATCHES: "battlegorithms_boolean_sensor_matches",
+  BOOLEAN_HAVE_ENEMY_FLAG: "battlegorithms_boolean_have_enemy_flag",
+  BOOLEAN_CAN_JUMP: "battlegorithms_boolean_can_jump",
+  BOOLEAN_CAN_PLACE_BARRIER: "battlegorithms_boolean_can_place_barrier",
+  BOOLEAN_AREA_FREEZE_READY: "battlegorithms_boolean_area_freeze_ready",
+  BOOLEAN_TEAMMATE_HAS_FLAG: "battlegorithms_boolean_teammate_has_flag",
+  BOOLEAN_ON_MY_SIDE: "battlegorithms_boolean_on_my_side",
+  BOOLEAN_ON_ENEMY_SIDE: "battlegorithms_boolean_on_enemy_side",
+  LOGIC_AND: "battlegorithms_logic_and",
+  LOGIC_OR: "battlegorithms_logic_or",
+  LOGIC_NOT: "battlegorithms_logic_not",
+  VALUE_NUMBER: "battlegorithms_value_number",
+  VALUE_RUNNER_INDEX: "battlegorithms_value_runner_index",
+  VALUE_DISTANCE_TO_TARGET: "battlegorithms_value_distance_to_target",
+  VALUE_RANDOM_ROLL: "battlegorithms_value_random_roll",
+  VALUE_PLAY_DIRECTION: "battlegorithms_value_play_direction",
+  VALUE_COMPARE: "battlegorithms_value_compare"
 };
 
-export const TEAM1_HUMAN_INITIAL_POS = { x: 1, y: Math.floor(ROWS / 2) - 2 };
-export const TEAM1_AI_ALLY_INITIAL_POS = { x: 1, y: Math.floor(ROWS / 2) + 0 };
-export const TEAM2_HUMAN_INITIAL_POS = { x: COLS - 2, y: Math.floor(ROWS / 2) - 2 };
-export const TEAM2_AI_ALLY_INITIAL_POS = { x: COLS - 2, y: Math.floor(ROWS / 2) + 0 };
-export const TEAM2_NPC1_INITIAL_POS = { x: COLS - 2, y: Math.floor(ROWS / 2) - 1 };
-export const TEAM2_NPC2_INITIAL_POS = { x: COLS - 2, y: Math.floor(ROWS / 2) + 1 };
-export const TEAM2_ENEMY1_INITIAL_POS = { x: COLS - 2, y: Math.floor(ROWS / 2) - 1 };
-export const TEAM2_ENEMY2_INITIAL_POS = { x: COLS - 2, y: Math.floor(ROWS / 2) + 1 };
-export const TEAM1_FLAG_INITIAL_POS = { x: 0, y: Math.floor(ROWS / 2) };
-export const TEAM2_FLAG_INITIAL_POS = { x: COLS - 1, y: Math.floor(ROWS / 2) };
-
-export const HUMAN_RUNNER_TEAM1_PD1_EMOJI = "🏃🏾‍♀️‍➡️";
-export const AI_ALLY_TEAM1_PD1_EMOJI = "🏃🏿‍♂️‍➡️";
-export const HUMAN_RUNNER_TEAM2_PD_MINUS1_EMOJI = "🏃🏻‍♂️";
-export const AI_ALLY_TEAM2_PD_MINUS1_EMOJI = "🏃";
-export const NPC_ENEMY_TEAM2_PD_MINUS1_EMOJI = "🏃";
+export const HUMAN_RUNNER_PD1_EMOJI = "🏃🏾‍♀️‍➡️";
+export const HUMAN_RUNNER_PD_MINUS1_EMOJI = "🏃🏾‍♀️";
+export const AI_ALLY_PD1_EMOJI = "🏃🏿‍♂️‍➡️";
+export const AI_ALLY_PD_MINUS1_EMOJI = "🏃🏿‍♂️";
+export const NPC_ENEMY_PD1_EMOJI = "🏃‍➡️";
+export const NPC_ENEMY_PD_MINUS1_EMOJI = "🏃";
 export const HUMAN_FROZEN_PD1_EMOJI = "🧎🏽‍♀️‍➡️";
+export const HUMAN_FROZEN_PD_MINUS1_EMOJI = "🧎🏽‍♀️";
 export const AI_ALLY_FROZEN_PD1_EMOJI = "🧎🏾‍♂️‍➡️";
-export const HUMAN_FROZEN_TEAM2_PD_MINUS1_EMOJI = "🧎🏻‍♂️";
-export const AI_ALLY_FROZEN_TEAM2_PD_MINUS1_EMOJI = "🧎";
+export const AI_ALLY_FROZEN_PD_MINUS1_EMOJI = "🧎🏾‍♂️";
+export const NPC_ENEMY_FROZEN_PD1_EMOJI = "🧎‍➡️";
 export const NPC_ENEMY_FROZEN_PD_MINUS1_EMOJI = "🧎";
 export const BARRIER_EMOJI = "🚧";
 export const FLAG1_EMOJI = "🚩";
 export const FLAG2_EMOJI = "🏳️";
-
-export const TEAM_CONFIG = {
+export const TEAM_GLOW_COLORS = {
   1: {
-    playDirection: 1,
-    humanEmoji: HUMAN_RUNNER_TEAM1_PD1_EMOJI,
-    humanFrozenEmoji: HUMAN_FROZEN_PD1_EMOJI,
-    aiAllyEmoji: AI_ALLY_TEAM1_PD1_EMOJI,
-    aiAllyFrozenEmoji: AI_ALLY_FROZEN_PD1_EMOJI,
-    baseCellType: CELL_TYPE.TEAM1_BASE,
-    flagEmoji: FLAG1_EMOJI,
-    initialFlagPos: TEAM1_FLAG_INITIAL_POS,
-    glowColorFill: [173, 216, 230],
-    glowColorStroke: [100, 149, 237]
+    fill: [173, 216, 230],
+    stroke: [100, 149, 237]
   },
   2: {
-    playDirection: -1,
-    npcEnemyEmoji: NPC_ENEMY_TEAM2_PD_MINUS1_EMOJI,
-    npcEnemyFrozenEmoji: NPC_ENEMY_FROZEN_PD_MINUS1_EMOJI,
-    humanEmoji: HUMAN_RUNNER_TEAM2_PD_MINUS1_EMOJI,
-    humanFrozenEmoji: HUMAN_FROZEN_TEAM2_PD_MINUS1_EMOJI,
-    aiAllyEmoji: AI_ALLY_TEAM2_PD_MINUS1_EMOJI,
-    aiAllyFrozenEmoji: AI_ALLY_FROZEN_TEAM2_PD_MINUS1_EMOJI,
-    baseCellType: CELL_TYPE.TEAM2_BASE,
-    flagEmoji: FLAG2_EMOJI,
-    initialFlagPos: TEAM2_FLAG_INITIAL_POS,
-    glowColorFill: [255, 200, 100],
-    glowColorStroke: [255, 165, 0]
+    fill: [255, 200, 100],
+    stroke: [255, 165, 0]
+  }
+};
+
+// Runner emoji rendering strategy:
+// - When USE_DIRECTIONAL_RUNNER_GLYPHS is true, select the PD1/PD-1 Unicode sequence by playDirection.
+// - When MIRROR_RUNNER_EMOJI_WITH_TRANSFORM is true, the selected glyph is mirrored in canvas for playDirection 1.
+// Recommended experiments:
+// - Old p5.js behavior guess: USE_DIRECTIONAL_RUNNER_GLYPHS=true, MIRROR_RUNNER_EMOJI_WITH_TRANSFORM=false
+// - Transform-only fallback: USE_DIRECTIONAL_RUNNER_GLYPHS=false, MIRROR_RUNNER_EMOJI_WITH_TRANSFORM=true
+export const USE_DIRECTIONAL_RUNNER_GLYPHS = true;
+export const MIRROR_RUNNER_EMOJI_WITH_TRANSFORM = false;
+
+export const RUNNER_EMOJI_BY_ROLE = {
+  human: {
+    active: {
+      1: USE_DIRECTIONAL_RUNNER_GLYPHS ? HUMAN_RUNNER_PD1_EMOJI : HUMAN_RUNNER_PD_MINUS1_EMOJI,
+      [-1]: HUMAN_RUNNER_PD_MINUS1_EMOJI
+    },
+    frozen: {
+      1: USE_DIRECTIONAL_RUNNER_GLYPHS ? HUMAN_FROZEN_PD1_EMOJI : HUMAN_FROZEN_PD_MINUS1_EMOJI,
+      [-1]: HUMAN_FROZEN_PD_MINUS1_EMOJI
+    }
+  },
+  ally: {
+    active: {
+      1: USE_DIRECTIONAL_RUNNER_GLYPHS ? AI_ALLY_PD1_EMOJI : AI_ALLY_PD_MINUS1_EMOJI,
+      [-1]: AI_ALLY_PD_MINUS1_EMOJI
+    },
+    frozen: {
+      1: USE_DIRECTIONAL_RUNNER_GLYPHS ? AI_ALLY_FROZEN_PD1_EMOJI : AI_ALLY_FROZEN_PD_MINUS1_EMOJI,
+      [-1]: AI_ALLY_FROZEN_PD_MINUS1_EMOJI
+    }
+  },
+  npc: {
+    active: {
+      1: USE_DIRECTIONAL_RUNNER_GLYPHS ? NPC_ENEMY_PD1_EMOJI : NPC_ENEMY_PD_MINUS1_EMOJI,
+      [-1]: NPC_ENEMY_PD_MINUS1_EMOJI
+    },
+    frozen: {
+      1: USE_DIRECTIONAL_RUNNER_GLYPHS ? NPC_ENEMY_FROZEN_PD1_EMOJI : NPC_ENEMY_FROZEN_PD_MINUS1_EMOJI,
+      [-1]: NPC_ENEMY_FROZEN_PD_MINUS1_EMOJI
+    }
   }
 };
 
@@ -198,6 +241,7 @@ export const GLOW_PULSE_MIN_ALPHA = 20;
 export const GLOW_PULSE_MAX_ALPHA = 250;
 export const GLOW_SOLID_ALPHA_ANIMATING = 160;
 export const GLOW_SOLID_ALPHA_FROZEN_TURN = 80;
+export const GOAL_BURST_DURATION_MS = 1000;
 
 export {
   CELL_TYPE,
@@ -205,6 +249,7 @@ export {
   DEFAULT_MAP_KEY,
   GAME_MODES,
   DEFAULT_GAME_MODE,
+  P1_KEY_ALIASES,
   P1_KEY_BINDINGS,
   P2_KEY_BINDINGS
 };

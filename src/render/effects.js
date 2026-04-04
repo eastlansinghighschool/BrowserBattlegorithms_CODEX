@@ -6,9 +6,9 @@ import {
   GLOW_PULSE_SPEED,
   GLOW_SOLID_ALPHA_ANIMATING,
   GLOW_SOLID_ALPHA_FROZEN_TURN,
-  GLOW_STROKE_WEIGHT,
-  TEAM_CONFIG
+  GLOW_STROKE_WEIGHT
 } from "../config/constants.js";
+import { getTeamGlowColors } from "../core/teams.js";
 
 export function drawActiveRunnerGlow(p, state) {
   if (state.mainGameState !== "RUNNING" || !state.allRunners.length || state.activeRunnerIndex >= state.allRunners.length) {
@@ -16,13 +16,13 @@ export function drawActiveRunnerGlow(p, state) {
   }
 
   const runnerToGlow = state.allRunners[state.activeRunnerIndex];
-  if (!runnerToGlow || !TEAM_CONFIG[runnerToGlow.team]) {
+  const glowColors = runnerToGlow ? getTeamGlowColors(state, runnerToGlow.team) : null;
+  if (!runnerToGlow || !glowColors) {
     return;
   }
 
-  const teamGlowConfig = TEAM_CONFIG[runnerToGlow.team];
-  const [r, g, b] = teamGlowConfig.glowColorFill;
-  const [strokeR, strokeG, strokeB] = teamGlowConfig.glowColorStroke;
+  const [r, g, b] = glowColors.fill;
+  const [strokeR, strokeG, strokeB] = glowColors.stroke;
   let showGlow = false;
   let alpha = GLOW_SOLID_ALPHA_ANIMATING;
   let isPulsing = false;
