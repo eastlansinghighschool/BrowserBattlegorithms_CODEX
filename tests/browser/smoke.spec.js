@@ -1104,6 +1104,142 @@ test("guided Level 20 uses freeze and avoids overlapping runners", async ({ page
   expect(result.everyTickUnique).toBeTruthy();
 });
 
+test("guided HUD shows level state, turn, and title instead of the score summary", async ({ page }) => {
+  await page.goto("/");
+  await chooseGuided(page);
+  await dismissTutorial(page);
+
+  await expect(page.locator("#scoreDisplay")).toContainText("Level ready");
+  await expect(page.locator("#scoreDisplay")).toContainText("Turn: 1");
+  await expect(page.locator("#scoreDisplay")).toContainText("Level 1: Move to Target");
+  await expect(page.locator("#scoreDisplay")).not.toContainText("Scores:");
+});
+
+test("advanced boolean/value inputs stay enabled when connected", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    hooks.startLevel("how-far-away");
+    hooks.app.blocklyWorkspace.readOnly = false;
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24">
+          <next>
+            <block type="battlegorithms_if_boolean_else">
+              <value name="BOOL">
+                <block type="battlegorithms_value_compare">
+                  <value name="LEFT">
+                    <block type="battlegorithms_value_runner_index"></block>
+                  </value>
+                  <field name="OPERATOR">EQ</field>
+                  <value name="RIGHT">
+                    <block type="battlegorithms_value_number">
+                      <field name="VALUE">0</field>
+                    </block>
+                  </value>
+                </block>
+              </value>
+              <statement name="DO">
+                <block type="battlegorithms_move_forward"></block>
+              </statement>
+              <statement name="ELSE">
+                <block type="battlegorithms_stay_still"></block>
+              </statement>
+            </block>
+          </next>
+        </block>
+      </xml>
+    `);
+    const workspace = hooks.getBlocklyWorkspace();
+    const compareBlock = workspace.getBlocksByType("battlegorithms_value_compare", false)[0];
+    const numberBlock = workspace.getBlocksByType("battlegorithms_value_number", false)[0];
+    const readWarnings = (block) => {
+      if (!block.warning || typeof block.warning.getText !== "function") {
+        return "";
+      }
+      return block.warning.getText() || "";
+    };
+    return {
+      compareEnabled: compareBlock.isEnabled(),
+      compareWarning: readWarnings(compareBlock),
+      numberEnabled: numberBlock.isEnabled(),
+      numberWarning: readWarnings(numberBlock)
+    };
+  });
+
+  expect(result.compareEnabled).toBeTruthy();
+  expect(result.numberEnabled).toBeTruthy();
+  expect(result.compareWarning).toBe("");
+  expect(result.numberWarning).toBe("");
+});
+
+test("redesigned advanced levels reject the reported trivial one-block solutions", async ({ page }) => {
+  await page.goto("/");
+  const results = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    const cases = [
+      ["closest-threat", `<block type="battlegorithms_move_forward"></block>`],
+      ["one-program-two-allies", `<block type="battlegorithms_move_forward"></block>`],
+      ["first-two-defend", `<block type="battlegorithms_move_forward"></block>`],
+      ["barrier-specialist", `<block type="battlegorithms_place_barrier"></block>`],
+      ["jump-team", `<block type="battlegorithms_jump_forward"></block>`]
+    ];
+
+    return cases.map(([levelId, innerXml]) => {
+      hooks.app.state.showModePicker = false;
+      hooks.app.state.randomFn = () => 0;
+      hooks.startLevel(levelId);
+      hooks.loadWorkspaceXml(`
+        <xml xmlns="https://developers.google.com/blockly/xml">
+          <block type="battlegorithms_on_each_turn" x="24" y="24">
+            <next>${innerXml}</next>
+          </block>
+        </xml>
+      `);
+      for (let tick = 0; tick < 400; tick += 1) {
+        hooks.processTurn();
+        if (hooks.app.state.activeLevelResult === "PASSED" || hooks.app.state.activeLevelResult === "FAILED") {
+          break;
+        }
+      }
+      return {
+        levelId,
+        result: hooks.app.state.activeLevelResult
+      };
+    });
+  });
+
+  expect(results).toEqual([
+    { levelId: "closest-threat", result: "FAILED" },
+    { levelId: "one-program-two-allies", result: "FAILED" },
+    { levelId: "first-two-defend", result: "FAILED" },
+    { levelId: "barrier-specialist", result: "FAILED" },
+    { levelId: "jump-team", result: "FAILED" }
+  ]);
+});
+
+test("advanced scrimmage opens full capstone tools and starts with active enemies", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    hooks.startLevel("advanced-scrimmage");
+    const toolbox = hooks.getAvailableToolboxBlockTypes();
+    const opponents = hooks.app.state.allRunners.filter((runner) => runner.team === 2);
+    return {
+      toolbox,
+      allOpponentsActive: opponents.every((runner) => !runner.isFrozen)
+    };
+  });
+
+  expect(result.toolbox).toContain("battlegorithms_move_randomly");
+  expect(result.toolbox).toContain("battlegorithms_place_barrier");
+  expect(result.toolbox).toContain("battlegorithms_jump_forward");
+  expect(result.toolbox).toContain("battlegorithms_freeze_opponents");
+  expect(result.allOpponentsActive).toBeTruthy();
+});
+
 test("same-team runners cannot step onto their own home flag in live play", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(() => {

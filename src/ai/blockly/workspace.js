@@ -281,6 +281,18 @@ function collectStaticallyReachableBlocks(block, reachableIds) {
   while (current && canFallThrough) {
     reachableIds.add(current.id);
 
+    if (Array.isArray(current.inputList)) {
+      for (const input of current.inputList) {
+        if (!input?.name) {
+          continue;
+        }
+        const connectedBlock = current.getInputTargetBlock?.(input.name);
+        if (connectedBlock) {
+          collectStaticallyReachableBlocks(connectedBlock, reachableIds);
+        }
+      }
+    }
+
     if (getActionTypeForBlockType(current.type)) {
       canFallThrough = false;
       break;

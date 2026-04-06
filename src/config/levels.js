@@ -308,6 +308,21 @@ const ADVANCED_ALL_BLOCKS = [
   ...ADVANCED_NUMBER_VALUES
 ];
 
+const ADVANCED_CAPSTONE_BLOCKS = [
+  ...ADVANCED_ALL_BLOCKS,
+  ...GENERIC_SENSOR_BLOCKS,
+  ...MOVE_TOWARD_BLOCKS,
+  ...TEAMMATE_FLAG_BLOCKS,
+  ...TERRITORY_BLOCKS,
+  ...AREA_FREEZE_BLOCKS,
+  ...BARRIER_READY_BLOCKS,
+  ...BARRIER_PLACEMENT_BLOCKS,
+  ...JUMP_CONDITION_BLOCKS,
+  ...JUMP_BLOCKS,
+  ...EXTENDED_MOVEMENT_BLOCKS,
+  BLOCK_TYPES.MOVE_RANDOMLY
+];
+
 function getSemanticRoleForTeamId(teamId) {
   return Number(teamId) === 1 ? "player" : "opponent";
 }
@@ -1569,9 +1584,9 @@ const LEVEL_DEFINITIONS = [
     id: "closest-threat",
     title: "Level 21: Closest Threat",
     description: "Use Move Toward closest enemy to intercept a nearby defender.",
-    introText: "Closest enemy is a different kind of target. Instead of racing for a flag, the ally can turn and meet the nearest threat.",
+    introText: "Closest enemy is a different kind of target. This board is arranged so the ally has to bend upward before the intercept works.",
     mode: GAME_MODES.PLAYER_VS_NPC,
-    mapKey: "midfieldPressure",
+    mapKey: "simpleAisle",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
     toolboxBlockTypes: [...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
     moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.CLOSEST_ENEMY],
@@ -1580,14 +1595,14 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 8 },
     tutorialSteps: [
       { id: "level-21-target", title: "A New Move Toward Target", body: "Closest enemy picks the nearest active opponent and steps toward them.", targetSelector: "#blockly-region" },
-      { id: "level-21-board", title: "Intercept The Runner", body: "This challenge is about chasing a threat, not chasing a flag.", targetSelector: "#canvas-container" }
+      { id: "level-21-board", title: "Intercept The Runner", body: "This challenge is about chasing a threat, not chasing a flag. A straight forward march will miss the intercept.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
       autoStayHumanRunnerIds: ["runner_1_HumanP1"],
       teams: {
-        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 2, gridY: 3 }] },
-        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 6, gridY: 3, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 2, gridY: 5 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 5, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
       }
     }
   },
@@ -1725,32 +1740,7 @@ const LEVEL_DEFINITIONS = [
     id: "one-program-two-allies",
     title: "Level 27: One Program, Two Allies",
     description: "Two allies now share one workspace. Use runner index so one moves and the other waits.",
-    introText: "This is the beginning of team programming. The same Blockly program runs for both allies, so runner index gives them different jobs.",
-    mode: GAME_MODES.PLAYER_VS_NPC,
-    mapKey: "simpleAisle",
-    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
-    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
-    initialBlocklyXml: STARTER_EVENT_XML,
-    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 4, y: 4 } },
-    failureCondition: { type: "turn_limit_exceeded", maxTurns: 8 },
-    tutorialSteps: [
-      { id: "level-27-shared-program", title: "One Workspace, Two Allies", body: "Both allies run the same blocks. Runner index is how the program can tell them apart.", targetSelector: "#blockly-region" },
-      { id: "level-27-index", title: "Index 0 And Index 1", body: "In this level, runner 0 should move while runner 1 stays out of the lane.", targetSelector: "#canvas-container" }
-    ],
-    setup: {
-      pointsToWin: 1,
-      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
-      teams: {
-        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 5 }] },
-        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
-      }
-    }
-  },
-  {
-    id: "index-jobs",
-    title: "Level 28: Index Jobs",
-    description: "Use runner index comparisons so one ally attacks and the other patrols upward.",
-    introText: "A comparison against runner index is the simplest way to divide jobs inside one shared program.",
+    introText: "This is the beginning of team programming. The lower ally is closer to the flag, so runner index has to tell only the top ally to go.",
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
@@ -1758,18 +1748,46 @@ const LEVEL_DEFINITIONS = [
     moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.ENEMY_FLAG],
     initialBlocklyXml: STARTER_EVENT_XML,
     winCondition: { type: "runner_reaches_enemy_flag", runnerId: "runner_1_AI_AllyP1" },
-    failureCondition: { type: "turn_limit_exceeded", maxTurns: 14 },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 16 },
     tutorialSteps: [
-      { id: "level-28-index-compare", title: "Compare The Index", body: "You can compare runner index to a number to choose different branches for different allies.", targetSelector: "#blockly-region" },
-      { id: "level-28-jobs", title: "Attacker And Patrol", body: "One ally should chase the flag while the other takes a different route.", targetSelector: "#canvas-container" }
+      { id: "level-27-shared-program", title: "One Workspace, Two Allies", body: "Both allies run the same blocks. Runner index is how the program can tell them apart.", targetSelector: "#blockly-region" },
+      { id: "level-27-index", title: "Index 0 And Index 1", body: "In this level, runner 0 should move toward the flag while runner 1 stays out of the lane. If both go, the wrong ally gets there first.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
       autoStayHumanRunnerIds: ["runner_1_HumanP1"],
       teams: {
-        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 6 }] },
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 2 }, { slot: "ally2", gridX: 1, gridY: 5 }] },
         opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
-      }
+      },
+      flags: { opponent: { gridX: 9, gridY: 5 } }
+    }
+  },
+  {
+    id: "index-jobs",
+    title: "Level 28: Index Jobs",
+    description: "Use runner index comparisons so one ally attacks and the other patrols upward.",
+    introText: "This level still has one real goal. Runner index decides which ally is the attacker and which ally should peel upward instead of stealing the job.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.ENEMY_FLAG],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_enemy_flag", runnerId: "runner_1_AI_AllyP1" },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 10 },
+    tutorialSteps: [
+      { id: "level-28-index-compare", title: "Compare The Index", body: "You can compare runner index to a number to choose different branches for different allies.", targetSelector: "#blockly-region" },
+      { id: "level-28-jobs", title: "Attacker And Patrol", body: "This level has one true attacker. The other ally should patrol upward so the wrong runner does not reach the flag first.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 5 }, { slot: "ally2", gridX: 7, gridY: 5 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      },
+      flags: { opponent: { gridX: 9, gridY: 5 } }
     }
   },
   {
@@ -1783,16 +1801,17 @@ const LEVEL_DEFINITIONS = [
     toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
     initialBlocklyXml: STARTER_EVENT_XML,
     winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1_3", targetCell: { x: 4, y: 4 } },
-    failureCondition: { type: "turn_limit_exceeded", maxTurns: 10 },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 6 },
     tutorialSteps: [
       { id: "level-29-range", title: "Index Ranges Create Teams", body: "Index < 2 can group the first two allies together while index 2 takes a separate job.", targetSelector: "#blockly-region" },
-      { id: "level-29-three-allies", title: "Three Allies, One Program", body: "In this level, the first two allies should move out of the way so the third can advance.", targetSelector: "#canvas-container" }
+      { id: "level-29-three-allies", title: "Three Allies, One Program", body: "The first two allies are parked in the lane. Move them up together so runner 2 can advance to the target.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
       autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      barriers: [{ gridX: 5, gridY: 4, ownerRunnerId: "phase8_first_two_defend_wall" }],
       teams: {
-        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 2 }, { slot: "ally2", gridX: 1, gridY: 3 }, { slot: "ally3", gridX: 1, gridY: 4 }] },
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 2, gridY: 4 }, { slot: "ally2", gridX: 3, gridY: 4 }, { slot: "ally3", gridX: 1, gridY: 4 }] },
         opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
       }
     }
@@ -1828,7 +1847,7 @@ const LEVEL_DEFINITIONS = [
     id: "closest-enemy-defender",
     title: "Level 31: Closest Enemy Defender",
     description: "One ally attacks while another uses closest-enemy targeting as a defender.",
-    introText: "This is the first advanced level where one ally chases the goal and another actively reacts to opponents.",
+    introText: "This is the first advanced level where one ally chases the goal and another reacts to live enemies that have already crossed onto your side.",
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
@@ -1839,15 +1858,16 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 14 },
     tutorialSteps: [
       { id: "level-31-split", title: "Split The Team Jobs", body: "Use runner index to make the first ally attack and the second react to the closest enemy.", targetSelector: "#blockly-region" },
-      { id: "level-31-pressure", title: "Keep The Lane Clear", body: "The attacking ally still needs a path, so the defender should react without clogging the scoring lane.", targetSelector: "#canvas-container" }
+      { id: "level-31-pressure", title: "Defend Your Side First", body: "The enemies are already on your half of the map. The defender should react there while the attacker keeps the scoring plan moving.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
       autoStayHumanRunnerIds: ["runner_1_HumanP1"],
       teams: {
-        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 6 }] },
-        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 6, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }] }
-      }
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 7 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 2 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 5, gridY: 1 }, { slot: "npc2", gridX: 5, gridY: 2 }] }
+      },
+      flags: { opponent: { gridX: 8, gridY: 4 } }
     }
   },
   {
@@ -1881,24 +1901,24 @@ const LEVEL_DEFINITIONS = [
     id: "barrier-specialist",
     title: "Level 33: Barrier Specialist",
     description: "One ally places the team barrier while the other keeps moving.",
-    introText: "Barrier placement becomes more strategic when only one ally on the team is responsible for it.",
+    introText: "Barrier placement becomes more strategic when only one ally on the team is responsible for it. The attacker still has to keep moving on the same short clock.",
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
     toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...BARRIER_PLACEMENT_BLOCKS, ...BARRIER_READY_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
     initialBlocklyXml: STARTER_EVENT_XML,
-    winCondition: { type: "barrier_exists_at_cell", targetCell: { x: 4, y: 5 } },
-    failureCondition: { type: "turn_limit_exceeded", maxTurns: 6 },
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 5, y: 4 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 3 },
     tutorialSteps: [
-      { id: "level-33-index-barrier", title: "Only One Ally Should Place", body: "Use runner index together with barrier readiness so one ally becomes the barrier specialist.", targetSelector: "#blockly-region" },
-      { id: "level-33-cell", title: "Build The Support Wall", body: "This level checks for a barrier on the highlighted square.", targetSelector: "#canvas-container" }
+      { id: "level-33-index-barrier", title: "Only One Ally Should Place", body: "Use runner index together with barrier readiness so one ally becomes the barrier specialist while the attacker keeps advancing.", targetSelector: "#blockly-region" },
+      { id: "level-33-cell", title: "Build The Support Wall", body: "The barrier goes on the lower lane while the tracked attacker reaches the highlighted square above it.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
       autoStayHumanRunnerIds: ["runner_1_HumanP1"],
       teams: {
         player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 3, gridY: 4 }, { slot: "ally2", gridX: 3, gridY: 5 }] },
-        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 8, gridY: 5 }, { slot: "npc2", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }] }
       }
     }
   },
@@ -1906,22 +1926,26 @@ const LEVEL_DEFINITIONS = [
     id: "jump-team",
     title: "Level 34: Jump Team",
     description: "One ally uses the jump route while another takes a support path.",
-    introText: "Resources can be assigned by role too. This level gives one ally the dramatic jump job while the other avoids the wall.",
+    introText: "Resources can be assigned by role too. This level gives one ally the dramatic jump job, but that jumper still has to keep moving afterward.",
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
     toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...JUMP_CONDITION_BLOCKS, ...JUMP_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
     initialBlocklyXml: STARTER_EVENT_XML,
-    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 3, y: 4 } },
-    failureCondition: { type: "turn_limit_exceeded", maxTurns: 8 },
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 5, y: 4 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 3 },
     tutorialSteps: [
       { id: "level-34-jump-role", title: "Give The Jump To One Ally", body: "Index can decide which ally gets the jump path and which ally avoids the obstacle.", targetSelector: "#blockly-region" },
-      { id: "level-34-wall", title: "One Dramatic Leap", body: "The wall blocks the lane, so the lead ally needs one good jump.", targetSelector: "#canvas-container" }
+      { id: "level-34-wall", title: "One Dramatic Leap", body: "The wall blocks the lane, so the lead ally needs one good jump and then one more normal move to finish.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
       autoStayHumanRunnerIds: ["runner_1_HumanP1"],
-      barriers: [{ gridX: 2, gridY: 4, ownerRunnerId: "phase8_jump_wall" }],
+      barriers: [
+        { gridX: 2, gridY: 3, ownerRunnerId: "phase8_jump_wall_top" },
+        { gridX: 2, gridY: 4, ownerRunnerId: "phase8_jump_wall_mid" },
+        { gridX: 2, gridY: 5, ownerRunnerId: "phase8_jump_wall_low" }
+      ],
       teams: {
         player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }, { slot: "ally2", gridX: 1, gridY: 6 }] },
         opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
@@ -1936,11 +1960,11 @@ const LEVEL_DEFINITIONS = [
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "wideScrimmage",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
-    toolboxBlockTypes: [...ADVANCED_ALL_BLOCKS, ...AREA_FREEZE_BLOCKS, ...MOVE_TOWARD_BLOCKS, ...BARRIER_READY_BLOCKS, ...JUMP_CONDITION_BLOCKS, ...EXTENDED_MOVEMENT_BLOCKS],
+    toolboxBlockTypes: [...ADVANCED_CAPSTONE_BLOCKS],
     moveTowardTargetTypes: [MOVE_TOWARD_TARGETS.ENEMY_FLAG, MOVE_TOWARD_TARGETS.CLOSEST_ENEMY, MOVE_TOWARD_TARGETS.MY_BASE],
     initialBlocklyXml: STARTER_EVENT_XML,
     winCondition: { type: "team_scores_point", teamId: 1, runnerId: "runner_1_AI_AllyP1" },
-    failureCondition: { type: "turn_limit_exceeded", maxTurns: 24 },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 32 },
     tutorialSteps: [
       { id: "level-35-capstone", title: "A Full Team Script", body: "This final level expects one shared program to divide attacking, defending, and support jobs across three allies.", targetSelector: "#blockly-region" },
       { id: "level-35-real-score", title: "Score For Real", body: "This time the level only passes when your team actually scores a point.", targetSelector: "#canvas-container" }
@@ -1961,13 +1985,38 @@ const LEVEL_DEFINITIONS = [
         opponent: {
           playDirection: -1,
           runners: [
-            { slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 },
-            { slot: "npc2", gridX: 10, gridY: 4, isFrozen: true, frozenTurnsRemaining: 999 },
-            { slot: "npc3", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
+            { slot: "npc1", gridX: 9, gridY: 1 },
+            { slot: "npc2", gridX: 10, gridY: 4 },
+            { slot: "npc3", gridX: 9, gridY: 6 }
           ]
         }
       },
-      flags: { opponent: { gridX: 9, gridY: 3 } }
+      flags: { opponent: { gridX: 8, gridY: 3 } }
+    }
+  },
+  {
+    id: "optional-random-lab",
+    title: "Optional Lab: Move Randomly",
+    description: "Try the Move Randomly block in a small sandbox challenge.",
+    introText: "This optional lab is here to show the random movement block directly. It is not part of the main advanced unlock path.",
+    mode: GAME_MODES.PLAYER_VS_NPC,
+    mapKey: "simpleAisle",
+    humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
+    toolboxBlockTypes: [BLOCK_TYPES.MOVE_RANDOMLY, BLOCK_TYPES.STAY_STILL],
+    initialBlocklyXml: STARTER_EVENT_XML,
+    winCondition: { type: "runner_reaches_cell", runnerId: "runner_1_AI_AllyP1", targetCell: { x: 2, y: 4 } },
+    failureCondition: { type: "turn_limit_exceeded", maxTurns: 12 },
+    tutorialSteps: [
+      { id: "level-36-random", title: "Optional Randomness Lab", body: "Move Randomly picks one of the four cardinal directions each turn. This lab is optional because randomness is harder to predict.", targetSelector: "#blockly-region" },
+      { id: "level-36-lab", title: "Try A Few Runs", body: "Some attempts will finish faster than others. That is the point of the lab: to see how a random action feels in the game.", targetSelector: "#canvas-container" }
+    ],
+    setup: {
+      pointsToWin: 1,
+      autoStayHumanRunnerIds: ["runner_1_HumanP1"],
+      teams: {
+        player: { playDirection: 1, runners: [{ slot: "human", gridX: 1, gridY: 1 }, { slot: "ally", gridX: 1, gridY: 4 }] },
+        opponent: { playDirection: -1, runners: [{ slot: "npc1", gridX: 10, gridY: 2, isFrozen: true, frozenTurnsRemaining: 999 }, { slot: "npc2", gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }] }
+      }
     }
   }
 ];

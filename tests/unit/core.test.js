@@ -382,7 +382,9 @@ const GUIDED_LEVEL_REFERENCE_SOLUTIONS = {
         </block>
       </value>
       <statement name="DO">
-        <block type="battlegorithms_move_forward"></block>
+        <block type="battlegorithms_move_toward">
+          <field name="TARGET">ENEMY_FLAG</field>
+        </block>
       </statement>
       <statement name="ELSE">
         <block type="battlegorithms_stay_still"></block>
@@ -617,9 +619,34 @@ const GUIDED_LEVEL_REFERENCE_SOLUTIONS = {
         </block>
       </statement>
       <statement name="ELSE">
-        <block type="battlegorithms_stay_still"></block>
+        <block type="battlegorithms_if_boolean_else">
+          <value name="BOOL">
+            <block type="battlegorithms_value_compare">
+              <value name="LEFT">
+                <block type="battlegorithms_value_runner_index"></block>
+              </value>
+              <field name="OPERATOR">EQ</field>
+              <value name="RIGHT">
+                <block type="battlegorithms_value_number">
+                  <field name="VALUE">1</field>
+                </block>
+              </value>
+            </block>
+          </value>
+          <statement name="DO">
+            <block type="battlegorithms_move_toward">
+              <field name="TARGET">CLOSEST_ENEMY</field>
+            </block>
+          </statement>
+          <statement name="ELSE">
+            <block type="battlegorithms_stay_still"></block>
+          </statement>
+        </block>
       </statement>
     </block>
+  `),
+  "optional-random-lab": buildSolutionXml(`
+    <block type="battlegorithms_move_randomly"></block>
   `)
 };
 
@@ -627,6 +654,7 @@ function runGuidedLevelWithSolution(levelId, xmlText) {
   registerBattleBlocklyBlocks();
   const app = createApp();
   app.blocklyWorkspace = new Blockly.Workspace();
+  app.state.randomFn = () => 0;
   initializeLevelState(app);
   startLevel(app, levelId);
   loadWorkspaceXml(app, xmlText);
@@ -821,7 +849,7 @@ test("npc type 2 returns a legal action shape", () => {
 
 test("level definitions load with the expected starter levels", () => {
   const levels = getLevelDefinitions();
-  assert.equal(levels.length, 35);
+  assert.equal(levels.length, 36);
   assert.deepEqual(
     levels.map((level) => level.id),
     [
@@ -859,7 +887,8 @@ test("level definitions load with the expected starter levels", () => {
       "freeze-support",
       "barrier-specialist",
       "jump-team",
-      "advanced-scrimmage"
+      "advanced-scrimmage",
+      "optional-random-lab"
     ]
   );
 });
@@ -877,6 +906,77 @@ test("guided mode initializes with all levels available during testing", () => {
   assert.equal(snapshot.levelProgress["mirror-forward"], LEVEL_STATUS.AVAILABLE);
   assert.equal(snapshot.levelProgress["freeze-the-lane"], LEVEL_STATUS.AVAILABLE);
   assert.equal(snapshot.humanTurnBehavior, HUMAN_TURN_BEHAVIORS.AUTO_SKIP);
+});
+
+test("advanced boolean and number inputs stay enabled when attached under If [boolean]", () => {
+  registerBattleBlocklyBlocks();
+  const app = createApp();
+  app.blocklyWorkspace = new Blockly.Workspace();
+  loadWorkspaceXml(app, buildSolutionXml(`
+    <block type="battlegorithms_if_boolean_else">
+      <value name="BOOL">
+        <block type="battlegorithms_value_compare">
+          <value name="LEFT">
+            <block type="battlegorithms_value_runner_index"></block>
+          </value>
+          <field name="OPERATOR">EQ</field>
+          <value name="RIGHT">
+            <block type="battlegorithms_value_number">
+              <field name="VALUE">0</field>
+            </block>
+          </value>
+        </block>
+      </value>
+      <statement name="DO">
+        <block type="battlegorithms_move_forward"></block>
+      </statement>
+      <statement name="ELSE">
+        <block type="battlegorithms_stay_still"></block>
+      </statement>
+    </block>
+  `));
+
+  updateBlocklyExecutionHints(app);
+
+  const compareBlock = app.blocklyWorkspace.getBlocksByType(BLOCK_TYPES.VALUE_COMPARE, false)[0];
+  const indexBlock = app.blocklyWorkspace.getBlocksByType(BLOCK_TYPES.VALUE_RUNNER_INDEX, false)[0];
+  const numberBlock = app.blocklyWorkspace.getBlocksByType(BLOCK_TYPES.VALUE_NUMBER, false)[0];
+
+  assert.equal(compareBlock.isEnabled(), true);
+  assert.equal(indexBlock.isEnabled(), true);
+  assert.equal(numberBlock.isEnabled(), true);
+  numberBlock.setFieldValue("3", "VALUE");
+  assert.equal(numberBlock.getFieldValue("VALUE"), 3);
+});
+
+test("trivial advanced solutions no longer pass the redesigned levels", () => {
+  const trivialPrograms = [
+    ["closest-threat", buildSolutionXml(`<block type="battlegorithms_move_forward"></block>`)],
+    ["one-program-two-allies", buildSolutionXml(`<block type="battlegorithms_move_forward"></block>`)],
+    ["first-two-defend", buildSolutionXml(`<block type="battlegorithms_move_forward"></block>`)],
+    ["barrier-specialist", buildSolutionXml(`<block type="battlegorithms_place_barrier"></block>`)],
+    ["jump-team", buildSolutionXml(`<block type="battlegorithms_jump_forward"></block>`)]
+  ];
+
+  for (const [levelId, xmlText] of trivialPrograms) {
+    const { app } = runGuidedLevelWithSolution(levelId, xmlText);
+    assert.equal(app.state.activeLevelResult, LEVEL_RESULT.FAILED, `${levelId} should reject the trivial program`);
+  }
+});
+
+test("advanced scrimmage opens the full guided capstone toolbox and uses active enemies", () => {
+  const level = getLevelDefinitions().find((entry) => entry.id === "advanced-scrimmage");
+  assert.ok(level.toolboxBlockTypes.includes(BLOCK_TYPES.MOVE_RANDOMLY));
+  assert.ok(level.toolboxBlockTypes.includes(BLOCK_TYPES.PLACE_BARRIER));
+  assert.ok(level.toolboxBlockTypes.includes(BLOCK_TYPES.JUMP_FORWARD));
+  assert.ok(level.toolboxBlockTypes.includes(BLOCK_TYPES.FREEZE_OPPONENTS));
+  assert.equal(level.setup.teams.opponent.runners.every((runner) => !runner.isFrozen), true);
+});
+
+test("optional Move Randomly lab is present after the capstone", () => {
+  const level = getLevelDefinitions().find((entry) => entry.id === "optional-random-lab");
+  assert.ok(level);
+  assert.equal(level.toolboxBlockTypes.includes(BLOCK_TYPES.MOVE_RANDOMLY), true);
 });
 
 test("starter levels include onboarding copy and tutorial steps", () => {
