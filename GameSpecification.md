@@ -33,6 +33,11 @@ This game is primarily aimed at students in introductory computer science course
 
 * **Player vs. NPC:** One human player controls their team's Human Runner and programs their AI Allies. The opposing team is controlled by built-in NPC logic.  
 * **Hot-Seat Multiplayer:** Two human players on the same computer. Each player controls their respective Human Runner using distinct keyboard inputs and programs their own team's AI Allies using separate Blockly workspaces/configurations.
+* **Free-Play PvP:** Each side fields one human runner plus Blockly-controlled allies. The UI uses one visible Blockly editor with Team 1 / Team 2 tabs so each side still has its own saved/importable program.
+* **Free-Play PvCPU Easy:** The player side fields one human runner plus Blockly allies, while the CPU side uses low-skill random legal actions and opportunistic special-ability use.
+* **Free-Play PvCPU Tactical:** The player side fields one human runner plus Blockly allies, while the CPU side splits into attacker and defender roles that pursue flags, protect home side, place midfield barriers, and freeze nearby threats when appropriate.
+
+* **Free-Play Configuration:** Free play supports configurable team sizes from 2-6 total runners per side and exposes multiple map layouts through a free-play-only setup panel.
 
 **2.3. Objective & Winning**
 

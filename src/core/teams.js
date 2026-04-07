@@ -3,7 +3,9 @@ import {
   COLS,
   FLAG1_EMOJI,
   FLAG2_EMOJI,
+  FREE_PLAY_MODES,
   GAME_MODES,
+  NPC_BEHAVIORS,
   ROWS,
   TEAM_GLOW_COLORS
 } from "../config/constants.js";
@@ -91,6 +93,16 @@ const RUNNER_SLOT_METADATA_BY_TEAM = {
   }
 };
 
+const INNER_BASE_COLUMN_BY_SIDE = {
+  left: 1,
+  right: COLS - 2
+};
+
+const OUTER_BASE_COLUMN_BY_SIDE = {
+  left: 0,
+  right: COLS - 1
+};
+
 function clonePosition(position) {
   return { x: position.x, y: position.y };
 }
@@ -122,29 +134,149 @@ export function createPlayerOpponentTeamSetup({ player, opponent }) {
   };
 }
 
-export function createRandomizedFreePlayTeamSetup(gameMode, randomFn = Math.random) {
-  const playerDirection = randomFn() < 0.5 ? 1 : -1;
+function createNamedRunnerSpec({
+  slot,
+  idSuffix,
+  gridX,
+  gridY,
+  isHumanControlled,
+  isNPC,
+  cpuBehavior = null,
+  cpuRole = null
+}) {
+  return {
+    slot,
+    idSuffix,
+    gridX,
+    gridY,
+    isHumanControlled,
+    isNPC,
+    cpuBehavior,
+    cpuRole
+  };
+}
+
+function getPreferredFreePlaySpawnCells(homeSide) {
+  const innerX = INNER_BASE_COLUMN_BY_SIDE[homeSide];
+  const outerX = OUTER_BASE_COLUMN_BY_SIDE[homeSide];
+  const rowPreference = [3, 4, 2, 5, 1, 6, 0, 7];
+  const cells = [];
+
+  for (const x of [innerX, outerX]) {
+    for (const y of rowPreference) {
+      if (x === outerX && y === DEFAULT_FLAG_ROW) {
+        continue;
+      }
+      cells.push({ gridX: x, gridY: y });
+    }
+  }
+
+  return cells;
+}
+
+function buildFreePlayRunnerPositions(homeSide, totalRunnerCount) {
+  const preferredCells = getPreferredFreePlaySpawnCells(homeSide);
+  return preferredCells.slice(0, totalRunnerCount).map((cell) => ({ ...cell }));
+}
+
+function buildFreePlayPlayerRunners(teamId, homeSide, totalRunnerCount) {
+  const positions = buildFreePlayRunnerPositions(homeSide, totalRunnerCount);
+  const playerSuffix = teamId === 1 ? "P1" : "P2";
+  const runners = [
+    createNamedRunnerSpec({
+      slot: "human",
+      idSuffix: `Human${playerSuffix}`,
+      gridX: positions[0].gridX,
+      gridY: positions[0].gridY,
+      isHumanControlled: true,
+      isNPC: false
+    })
+  ];
+
+  for (let index = 1; index < totalRunnerCount; index += 1) {
+    runners.push(
+      createNamedRunnerSpec({
+        slot: index === 1 ? "ally" : `ally${index}`,
+        idSuffix: index === 1 ? `AI_Ally${playerSuffix}` : `AI_Ally${playerSuffix}_${index}`,
+        gridX: positions[index].gridX,
+        gridY: positions[index].gridY,
+        isHumanControlled: false,
+        isNPC: false
+      })
+    );
+  }
+
+  return runners;
+}
+
+function buildFreePlayCpuRunners(homeSide, totalRunnerCount, freePlayMode) {
+  const positions = buildFreePlayRunnerPositions(homeSide, totalRunnerCount);
+  const cpuRunners = [];
+  const attackerCount = freePlayMode === FREE_PLAY_MODES.PLAYER_VS_CPU_TACTICAL
+    ? Math.floor(totalRunnerCount / 2)
+    : 0;
+
+  for (let index = 0; index < totalRunnerCount; index += 1) {
+    let cpuBehavior = NPC_BEHAVIORS.FREE_PLAY_EASY;
+    let cpuRole = "easy";
+    if (freePlayMode === FREE_PLAY_MODES.PLAYER_VS_CPU_TACTICAL) {
+      const isAttacker = index < attackerCount;
+      cpuBehavior = isAttacker ? NPC_BEHAVIORS.FREE_PLAY_TACTICAL_ATTACKER : NPC_BEHAVIORS.FREE_PLAY_TACTICAL_DEFENDER;
+      cpuRole = isAttacker ? "attacker" : "defender";
+    }
+
+    cpuRunners.push(
+      createNamedRunnerSpec({
+        slot: index === 0 ? "npc1" : `npc${index + 1}`,
+        idSuffix: `Npc${index + 1}`,
+        gridX: positions[index].gridX,
+        gridY: positions[index].gridY,
+        isHumanControlled: false,
+        isNPC: true,
+        cpuBehavior,
+        cpuRole
+      })
+    );
+  }
+
+  return cpuRunners;
+}
+
+export function getGameModeForFreePlayMode(freePlayMode) {
+  return normalizeFreePlayMode(freePlayMode) === FREE_PLAY_MODES.PLAYER_VS_PLAYER
+    ? GAME_MODES.PLAYER_VS_PLAYER
+    : GAME_MODES.PLAYER_VS_NPC;
+}
+function normalizeFreePlayMode(mode) {
+  if (mode === GAME_MODES.PLAYER_VS_PLAYER) {
+    return FREE_PLAY_MODES.PLAYER_VS_PLAYER;
+  }
+  if (mode === GAME_MODES.PLAYER_VS_NPC) {
+    return FREE_PLAY_MODES.PLAYER_VS_CPU_EASY;
+  }
+  return mode;
+}
+
+export function createRandomizedFreePlayTeamSetup(freePlayMode, teamSizeOrRandomFn = 2, randomFn = Math.random) {
+  const normalizedMode = normalizeFreePlayMode(freePlayMode);
+  const resolvedRandomFn = typeof teamSizeOrRandomFn === "function" ? teamSizeOrRandomFn : randomFn;
+  const requestedTeamSize = typeof teamSizeOrRandomFn === "function" ? 2 : teamSizeOrRandomFn;
+  const playerDirection = resolvedRandomFn() < 0.5 ? 1 : -1;
   const opponentDirection = -playerDirection;
+  const playerHomeSide = deriveHomeSideFromPlayDirection(playerDirection);
+  const opponentHomeSide = deriveHomeSideFromPlayDirection(opponentDirection);
+  const normalizedTeamSize = Math.max(2, Math.min(6, Number(requestedTeamSize) || 2));
 
   return createPlayerOpponentTeamSetup({
     player: {
       playDirection: playerDirection,
-      runners: [
-        createRunnerSpec("human"),
-        createRunnerSpec("ally")
-      ]
+      runners: buildFreePlayPlayerRunners(1, playerHomeSide, normalizedTeamSize)
     },
     opponent: {
       playDirection: opponentDirection,
-      runners: gameMode === GAME_MODES.PLAYER_VS_PLAYER
-        ? [
-            createRunnerSpec("human"),
-            createRunnerSpec("ally")
-          ]
-        : [
-            createRunnerSpec("npc1"),
-            createRunnerSpec("npc2")
-          ]
+      runners: normalizedMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER
+        ? buildFreePlayPlayerRunners(2, opponentHomeSide, normalizedTeamSize)
+        : buildFreePlayCpuRunners(opponentHomeSide, normalizedTeamSize, normalizedMode)
     }
   });
 }

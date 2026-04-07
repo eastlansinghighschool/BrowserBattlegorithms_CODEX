@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-04-06 - Phase 9 Free Play Productization
+
+Free play is no longer just the guided campaign's sandbox leftover. This pass turns it into a configurable product surface with three out-of-the-box modes: `Player vs Player`, `Player vs CPU (Easy)`, and `Player vs CPU (Tactical)`.
+
+The runtime now supports team sizes from two to six total runners per side, multiple selectable free-play maps, and a dedicated free-play setup panel. PvP now uses one Blockly editor with separate Team 1 / Team 2 program tabs, and each side's XML persists independently so two students can sit at one keyboard and program/play against one another without overwriting each other's code.
+
+To support that, free play now has its own CPU strategy layer instead of reusing the guided NPC teaching behaviors. The easy CPU is intentionally chaotic and low-skill, while the tactical CPU splits into attacker and defender roles, pursues flags, places midfield barriers, and uses freeze when appropriate. The docs and smoke coverage were updated in parallel so this is also a release-hardening step, not just a feature addition.
+
 ## 2026-04-04 - Phase 8 Advanced Blockly and Team Strategy Expansion
 
 Phase 8 is now live in the codebase rather than just planned in the Markdown. The guided campaign has expanded from twenty beginner levels to thirty-five total levels, with Levels 21-35 introducing advanced Blockly reasoning and the first multi-ally shared-program strategy arc.

@@ -4,6 +4,7 @@ import * as Blockly from "blockly";
 import {
   AI_ACTION_TYPES,
   BLOCK_TYPES,
+  FREE_PLAY_MODES,
   GAME_MODES,
   GAME_VIEW_MODES,
   MIRROR_RUNNER_EMOJI_WITH_TRANSFORM,
@@ -831,6 +832,31 @@ test("free-play team setup randomizes which team attacks right or left while kee
   assert.equal(leftFirst.opponent.playDirection, -1);
   assert.equal(rightFirst.player.playDirection, -1);
   assert.equal(rightFirst.opponent.playDirection, 1);
+});
+
+test("free-play PvP team setup supports team sizes up to six with one human plus allies per side", () => {
+  const setup = createRandomizedFreePlayTeamSetup(FREE_PLAY_MODES.PLAYER_VS_PLAYER, 6, () => 0.25);
+
+  assert.equal(setup.player.runners.length, 6);
+  assert.equal(setup.opponent.runners.length, 6);
+  assert.equal(setup.player.runners.filter((runner) => runner.isHumanControlled).length, 1);
+  assert.equal(setup.opponent.runners.filter((runner) => runner.isHumanControlled).length, 1);
+  assert.equal(setup.player.runners.filter((runner) => !runner.isHumanControlled && !runner.isNPC).length, 5);
+  assert.equal(setup.opponent.runners.filter((runner) => !runner.isHumanControlled && !runner.isNPC).length, 5);
+});
+
+test("free-play PvCPU setups create the expected player and CPU runner counts", () => {
+  const easySetup = createRandomizedFreePlayTeamSetup(FREE_PLAY_MODES.PLAYER_VS_CPU_EASY, 4, () => 0.25);
+  const tacticalSetup = createRandomizedFreePlayTeamSetup(FREE_PLAY_MODES.PLAYER_VS_CPU_TACTICAL, 5, () => 0.25);
+
+  assert.equal(easySetup.player.runners.filter((runner) => runner.isHumanControlled).length, 1);
+  assert.equal(easySetup.player.runners.filter((runner) => !runner.isHumanControlled && !runner.isNPC).length, 3);
+  assert.equal(easySetup.opponent.runners.filter((runner) => runner.isNPC).length, 4);
+
+  assert.equal(tacticalSetup.player.runners.filter((runner) => runner.isHumanControlled).length, 1);
+  assert.equal(tacticalSetup.player.runners.filter((runner) => !runner.isHumanControlled && !runner.isNPC).length, 4);
+  assert.equal(tacticalSetup.opponent.runners.filter((runner) => runner.cpuRole === "attacker").length, 2);
+  assert.equal(tacticalSetup.opponent.runners.filter((runner) => runner.cpuRole === "defender").length, 3);
 });
 
 test("npc type 1 returns a legal action shape", () => {

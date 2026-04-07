@@ -2,6 +2,7 @@ import * as Blockly from "blockly";
 import {
   ADVANCED_COMPARE_OPERATORS,
   BLOCK_TYPES,
+  FREE_PLAY_MODES,
   GAME_VIEW_MODES,
   MOVE_TOWARD_TARGETS
 } from "../../config/constants.js";
@@ -28,6 +29,7 @@ import { setAllowedMoveTowardTargets, setAllowedSensorOptions } from "./blocks.j
 const IGNORED_BLOCK_REASON = "bba_ignored_block";
 const GUIDED_WORKSPACE_STORAGE_PREFIX = "bba:guided-workspace:";
 const FREE_PLAY_WORKSPACE_STORAGE_KEY = "bba:free-play-workspace";
+const FREE_PLAY_PVP_WORKSPACE_STORAGE_PREFIX = "bba:free-play-pvp-team:";
 
 function buildToolboxXml(blockTypes) {
   const blockLibrary = getBlockLibrary();
@@ -63,6 +65,58 @@ function buildDefaultWorkspaceXml() {
 
 function getEventBlock(workspace) {
   return workspace.getBlocksByType(BLOCK_TYPES.ON_EACH_TURN, false)[0] || null;
+}
+
+function getFreePlayProgramKey(teamId) {
+  return Number(teamId) === 2 ? "team2" : "team1";
+}
+
+function getActiveFreePlayProgramKey(app) {
+  if (app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER) {
+    return getFreePlayProgramKey(app.state.activeBlocklyTeamTab || 1);
+  }
+  return "player";
+}
+
+export function getActiveBlocklyProgramLabel(app) {
+  if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
+    return "Guided";
+  }
+  if (app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER) {
+    return `Team ${app.state.activeBlocklyTeamTab || 1}`;
+  }
+  return "Player Team";
+}
+
+function getWorkspaceStorageKey(app, overrideTeamId = null) {
+  if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
+    return `${GUIDED_WORKSPACE_STORAGE_PREFIX}${app.state.currentLevelId || "unknown"}`;
+  }
+  if (app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER) {
+    const teamId = overrideTeamId ?? app.state.activeBlocklyTeamTab ?? 1;
+    return `${FREE_PLAY_PVP_WORKSPACE_STORAGE_PREFIX}${teamId}`;
+  }
+  return FREE_PLAY_WORKSPACE_STORAGE_KEY;
+}
+
+function cacheWorkspaceXml(app, xmlText, overrideTeamId = null) {
+  if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
+    return;
+  }
+  const key = app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER
+    ? getFreePlayProgramKey(overrideTeamId ?? app.state.activeBlocklyTeamTab ?? 1)
+    : "player";
+  app.state.freePlayPrograms[key] = xmlText;
+}
+
+function getCachedWorkspaceXml(app, overrideTeamId = null) {
+  if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
+    return "";
+  }
+  const key = app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER
+    ? getFreePlayProgramKey(overrideTeamId ?? app.state.activeBlocklyTeamTab ?? 1)
+    : "player";
+  return app.state.freePlayPrograms[key] || "";
 }
 
 function ensureEventBlock(app) {
@@ -402,8 +456,26 @@ export function getFirstRunnableAction(app, runner) {
   if (!app.blocklyWorkspace) {
     return null;
   }
-  const eventBlock = ensureEventBlock(app);
-  return resolveFirstRunnableAction(app.state, runner, eventBlock?.getNextBlock() || null);
+  const shouldUseVisibleWorkspace =
+    app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS ||
+    app.state.freePlayMode !== FREE_PLAY_MODES.PLAYER_VS_PLAYER ||
+    Number(app.state.activeBlocklyTeamTab || 1) === Number(runner.team);
+
+  if (shouldUseVisibleWorkspace) {
+    const eventBlock = ensureEventBlock(app);
+    return resolveFirstRunnableAction(app.state, runner, eventBlock?.getNextBlock() || null);
+  }
+
+  const xmlText = getStoredWorkspaceXmlText(app, runner.team, buildDefaultWorkspaceXml());
+  const workspace = new Blockly.Workspace();
+  try {
+    const xml = Blockly.utils.xml.textToDom(xmlText || buildDefaultWorkspaceXml());
+    Blockly.Xml.domToWorkspace(xml, workspace);
+    const eventBlock = getEventBlock(workspace);
+    return resolveFirstRunnableAction(app.state, runner, eventBlock?.getNextBlock() || null);
+  } finally {
+    workspace.dispose();
+  }
 }
 
 export function initBlockly(app) {
@@ -497,28 +569,40 @@ export function getSensorRelationLabels() {
   return getSensorRelationOptionLabels();
 }
 
-function getWorkspaceStorageKey(app) {
-  if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
-    return `${GUIDED_WORKSPACE_STORAGE_PREFIX}${app.state.currentLevelId || "unknown"}`;
+export function getStoredWorkspaceXmlText(app, overrideTeamId = null, fallbackXml = "") {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return getCachedWorkspaceXml(app, overrideTeamId) || fallbackXml;
   }
-  return FREE_PLAY_WORKSPACE_STORAGE_KEY;
+  return (
+    window.localStorage.getItem(getWorkspaceStorageKey(app, overrideTeamId)) ||
+    getCachedWorkspaceXml(app, overrideTeamId) ||
+    fallbackXml
+  );
 }
 
-export function saveWorkspaceToLocalStorage(app) {
+export function saveWorkspaceToLocalStorage(app, overrideTeamId = null) {
   if (!app.blocklyWorkspace || typeof window === "undefined" || !window.localStorage) {
     return;
   }
-  window.localStorage.setItem(getWorkspaceStorageKey(app), getWorkspaceXmlText(app));
+  const xmlText = getWorkspaceXmlText(app);
+  cacheWorkspaceXml(app, xmlText, overrideTeamId);
+  window.localStorage.setItem(getWorkspaceStorageKey(app, overrideTeamId), xmlText);
 }
 
-export function loadWorkspaceFromLocalStorage(app, fallbackXml = "") {
-  if (typeof window === "undefined" || !window.localStorage) {
-    loadWorkspaceXml(app, fallbackXml);
-    return fallbackXml;
+export function switchActiveBlocklyTeamTab(app, teamId) {
+  if (app.state.currentModeView !== GAME_VIEW_MODES.FREE_PLAY || app.state.freePlayMode !== FREE_PLAY_MODES.PLAYER_VS_PLAYER) {
+    return;
   }
-  const savedXml = window.localStorage.getItem(getWorkspaceStorageKey(app));
-  const xmlToLoad = savedXml || fallbackXml;
+  saveWorkspaceToLocalStorage(app, app.state.activeBlocklyTeamTab || 1);
+  app.state.activeBlocklyTeamTab = Number(teamId) === 2 ? 2 : 1;
+  loadWorkspaceFromLocalStorage(app, "", app.state.activeBlocklyTeamTab);
+  updateBlocklyExecutionHints(app);
+}
+
+export function loadWorkspaceFromLocalStorage(app, fallbackXml = "", overrideTeamId = null) {
+  const xmlToLoad = getStoredWorkspaceXmlText(app, overrideTeamId, fallbackXml);
   loadWorkspaceXml(app, xmlToLoad);
+  cacheWorkspaceXml(app, xmlToLoad, overrideTeamId);
   return xmlToLoad;
 }
 

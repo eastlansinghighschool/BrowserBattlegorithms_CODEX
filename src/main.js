@@ -20,6 +20,7 @@ import { updateScoreDisplay } from "./ui/scoreboard.js";
 import { setPlayButtonState } from "./ui/gameStateUI.js";
 import { initializeP5App } from "./render/p5App.js";
 import {
+  configureFreePlay,
   enterFreePlay,
   enterGuidedMode,
   evaluateLevelProgress,
@@ -28,7 +29,9 @@ import {
   initializeLevelState,
   startLevel
 } from "./core/levels.js";
+import { switchActiveBlocklyTeamTab } from "./ai/blockly/workspace.js";
 import { bindLevelPanel, renderLevelPanel } from "./ui/levels.js";
+import { renderBlocklyPanel } from "./ui/blocklyPanel.js";
 import { getAIAllyAction } from "./ai/blockly/interpreter.js";
 import { processTurnActions } from "./core/turnEngine.js";
 import {
@@ -91,6 +94,7 @@ app.syncUi = () => {
   updateScoreDisplay(app);
   setPlayButtonState(app);
   renderLevelPanel(app);
+  renderBlocklyPanel(app);
   renderGoalBurstOverlay(app);
   updateSpotlight(app);
   renderTutorialOverlay(app);
@@ -130,6 +134,16 @@ window.__BBA_TEST_HOOKS__ = {
   },
   enterFreePlay: () => {
     enterFreePlay(app);
+    app.syncUi();
+    return getLevelStateSnapshot(app);
+  },
+  configureFreePlay: (updates) => {
+    configureFreePlay(app, updates);
+    app.syncUi();
+    return getLevelStateSnapshot(app);
+  },
+  switchBlocklyTeamTab: (teamId) => {
+    switchActiveBlocklyTeamTab(app, teamId);
     app.syncUi();
     return getLevelStateSnapshot(app);
   },

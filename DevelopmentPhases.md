@@ -7,6 +7,7 @@
 * Core gameplay, Blockly integration, NPC foundations, and the guided learning layer are in place, including a first-run mode chooser, spotlight tutorials, a required `On Each Turn` event block, beginner conditional blocks, a custom level picker popover, and a new **team-first runtime setup pipeline**.
 * Team identity is now a first-class architectural concern: active matches build explicit team state first, runners inherit `playDirection` from their team, and free play randomizes which team attacks left-to-right versus right-to-left on each load.
 * Phase 8 systems are now live: advanced boolean/value Blockly blocks, logic/comparison blocks, multi-ally shared-program guided levels, Local Storage workspace persistence, XML export/import, and first-pass sound feedback.
+* Phase 9 free-play productization is now underway in the codebase: free play includes PvP and two PvCPU difficulty modes, configurable team sizes from 2-6 runners per side, multiple selectable sandbox maps, and separate Blockly programs per side in PvP.
 
 **Phase 1: Specification Document for "Browser Battlegorithms" (Completed)**
 
@@ -145,12 +146,13 @@
 
 * **Objective:** Ensure a stable, polished, well-documented, and easily deployable application.
 * **Key Tasks:**
+  * Finish free play as a product surface, including PvP, PvCPU Easy, PvCPU Tactical, team-size selection, map selection, and separate PvP Blockly programs.
   * Thorough playtesting of all levels, features, NPC behaviors, and hot-seat mode.
   * Bug fixing and performance optimization.
   * Refine UI/UX based on testing.
   * Write a concise "Student Guide" (how to use the interface, explanation of all Blockly blocks, tips for strategy).
   * Write a concise "Teacher Guide" (how to share/use the activity, learning objectives, level overview).
-  * Prepare and deploy the application to the chosen static web hosting platform.
+  * Prepare and deploy the application to the chosen static web hosting platform, with CI gates for unit tests, browser tests, and production build.
 * **Testing / Verification Expectations:**
   * Run the full command-line regression suite and browser suite on every release candidate.
   * Perform cross-browser and responsive checks on the supported deployment targets.

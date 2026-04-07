@@ -13,6 +13,13 @@ export function updateScoreDisplay(app) {
     const statusText = activeLevelResult === "IN_PROGRESS" ? "Level in progress" : activeLevelResult === "PASSED" ? "Level passed" : activeLevelResult === "FAILED" ? "Level failed" : "Level ready";
     const currentLevel = (levels || []).find((level) => level.id === currentLevelId);
     prefix = `${statusText} | Turn: ${currentTurnNumber}${currentLevel ? ` | ${currentLevel.title}` : ""}`;
+  } else {
+    const modeText = app.state.freePlayMode === "PVP"
+      ? "PvP"
+      : app.state.freePlayMode === "PVCPU_EASY"
+        ? "PvCPU Easy"
+        : "PvCPU Tactical";
+    prefix = `${prefix} | ${modeText} | Map: ${app.state.freePlayMapKey} | Team Size: ${app.state.freePlayTeamSize}`;
   }
   scoreElement.innerHTML = prefix;
 }

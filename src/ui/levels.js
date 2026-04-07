@@ -1,4 +1,13 @@
-import { GAME_VIEW_MODES, HUMAN_TURN_BEHAVIORS, LEVEL_RESULT, LEVEL_STATUS } from "../config/constants.js";
+import {
+  FREE_PLAY_MAP_OPTIONS,
+  FREE_PLAY_MODES,
+  FREE_PLAY_TEAM_SIZE_MAX,
+  FREE_PLAY_TEAM_SIZE_MIN,
+  GAME_VIEW_MODES,
+  HUMAN_TURN_BEHAVIORS,
+  LEVEL_RESULT,
+  LEVEL_STATUS
+} from "../config/constants.js";
 import {
   getBlockDisplayLabel,
   getMoveTowardTargetLabel,
@@ -6,6 +15,7 @@ import {
   getSensorRelationLabel
 } from "../ai/blockly/blocks.js";
 import {
+  configureFreePlay,
   enterFreePlay,
   enterGuidedMode,
   getCurrentLevel,
@@ -74,6 +84,62 @@ function renderLevelPickerItems(app) {
     .join("");
 }
 
+function getFreePlayModeLabel(mode) {
+  if (mode === FREE_PLAY_MODES.PLAYER_VS_PLAYER) {
+    return "Player vs Player";
+  }
+  if (mode === FREE_PLAY_MODES.PLAYER_VS_CPU_EASY) {
+    return "Player vs CPU (Easy)";
+  }
+  if (mode === FREE_PLAY_MODES.PLAYER_VS_CPU_TACTICAL) {
+    return "Player vs CPU (Tactical)";
+  }
+  return mode;
+}
+
+function renderFreePlayOptions(app) {
+  const modeOptions = [
+    FREE_PLAY_MODES.PLAYER_VS_PLAYER,
+    FREE_PLAY_MODES.PLAYER_VS_CPU_EASY,
+    FREE_PLAY_MODES.PLAYER_VS_CPU_TACTICAL
+  ]
+    .map((mode) => `<option value="${mode}" ${mode === app.state.freePlayMode ? "selected" : ""}>${escapeHtml(getFreePlayModeLabel(mode))}</option>`)
+    .join("");
+
+  const sizeOptions = Array.from(
+    { length: FREE_PLAY_TEAM_SIZE_MAX - FREE_PLAY_TEAM_SIZE_MIN + 1 },
+    (_, index) => FREE_PLAY_TEAM_SIZE_MIN + index
+  )
+    .map((size) => `<option value="${size}" ${size === app.state.freePlayTeamSize ? "selected" : ""}>${size} runners per side</option>`)
+    .join("");
+
+  const mapOptions = FREE_PLAY_MAP_OPTIONS
+    .map((option) => `<option value="${option.key}" ${option.key === app.state.freePlayMapKey ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
+    .join("");
+
+  const currentMapLabel = FREE_PLAY_MAP_OPTIONS.find((option) => option.key === app.state.freePlayMapKey)?.label || app.state.freePlayMapKey;
+  const programSummary = app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER
+    ? `Editing Team ${app.state.activeBlocklyTeamTab || 1} Program`
+    : "Editing Player Team Program";
+
+  return `
+    <div class="free-play-setup">
+      <label>Mode
+        <select data-action="free-play-mode">${modeOptions}</select>
+      </label>
+      <label>Team Size
+        <select data-action="free-play-team-size">${sizeOptions}</select>
+      </label>
+      <label>Map
+        <select data-action="free-play-map">${mapOptions}</select>
+      </label>
+    </div>
+    <p><strong>Current setup:</strong> ${escapeHtml(getFreePlayModeLabel(app.state.freePlayMode))} | ${escapeHtml(currentMapLabel)} | ${escapeHtml(`${app.state.freePlayTeamSize} runners per side`)}</p>
+    <p><strong>Blockly:</strong> ${escapeHtml(programSummary)}</p>
+    <p><strong>Controls:</strong> Team 1 uses WASD, J/F, B, X. Team 2 uses O K L ;, M, I, .</p>
+  `;
+}
+
 export function bindLevelPanel(app) {
   const panel = document.getElementById("level-panel");
   if (!panel) {
@@ -118,6 +184,25 @@ export function bindLevelPanel(app) {
       if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
         enterGuidedMode(app);
       }
+    }
+
+    app.syncUi();
+  });
+
+  panel.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    if (target.dataset.action === "free-play-mode") {
+      configureFreePlay(app, { freePlayMode: target.value, activeBlocklyTeamTab: 1 });
+    } else if (target.dataset.action === "free-play-team-size") {
+      configureFreePlay(app, { freePlayTeamSize: Number(target.value) });
+    } else if (target.dataset.action === "free-play-map") {
+      configureFreePlay(app, { freePlayMapKey: target.value });
+    } else {
+      return;
     }
 
     app.syncUi();
@@ -211,7 +296,8 @@ export function renderLevelPanel(app) {
     ` : `
       <div class="level-summary">
         <h3>Free Play</h3>
-        <p>Play the sandbox match with the full current toolbox and existing match flow.</p>
+        <p>Play sandbox matches with configurable teams, maps, and CPU difficulty.</p>
+        ${renderFreePlayOptions(app)}
       </div>
     `}
   `;

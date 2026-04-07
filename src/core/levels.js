@@ -2,6 +2,9 @@ import * as Blockly from "blockly";
 import {
   DEFAULT_GAME_MODE,
   DEFAULT_MAP_KEY,
+  DEFAULT_FREE_PLAY_MODE,
+  DEFAULT_FREE_PLAY_TEAM_SIZE,
+  FREE_PLAY_MODES,
   GAME_VIEW_MODES,
   GOAL_BURST_DURATION_MS,
   HUMAN_TURN_BEHAVIORS,
@@ -13,7 +16,7 @@ import {
 } from "../config/constants.js";
 import { createInitialLevelProgress, getLevelDefinitions } from "../config/levels.js";
 import { initializeDisplayState, initializeMatch, syncHumanTurnBehaviorVisuals } from "./setup.js";
-import { createRandomizedFreePlayTeamSetup, getTeamFlagHome } from "./teams.js";
+import { createRandomizedFreePlayTeamSetup, getGameModeForFreePlayMode, getTeamFlagHome } from "./teams.js";
 import { playSound } from "../ui/sound.js";
 
 function findCurrentLevel(state) {
@@ -106,12 +109,16 @@ export function enterGuidedMode(app) {
 export function enterFreePlay(app) {
   const { state } = app;
   state.currentModeView = GAME_VIEW_MODES.FREE_PLAY;
-  state.currentGameMode = DEFAULT_GAME_MODE;
-  state.currentMapKey = DEFAULT_MAP_KEY;
-  state.gameMap = MAPS[DEFAULT_MAP_KEY];
+  state.freePlayMode = state.freePlayMode || DEFAULT_FREE_PLAY_MODE;
+  state.freePlayTeamSize = state.freePlayTeamSize || DEFAULT_FREE_PLAY_TEAM_SIZE;
+  state.freePlayMapKey = state.freePlayMapKey || DEFAULT_MAP_KEY;
+  state.activeBlocklyTeamTab = state.activeBlocklyTeamTab || 1;
+  state.currentGameMode = getGameModeForFreePlayMode(state.freePlayMode);
+  state.currentMapKey = state.freePlayMapKey;
+  state.gameMap = MAPS[state.freePlayMapKey];
   state.pointsToWin = 2;
   state.autoStayHumanRunnerIds = [];
-  state.activeTeamSetup = createRandomizedFreePlayTeamSetup(state.currentGameMode, state.randomFn);
+  state.activeTeamSetup = createRandomizedFreePlayTeamSetup(state.freePlayMode, state.freePlayTeamSize, state.randomFn);
   state.activeFlagSetup = null;
   state.setupBarriers = [];
   state.humanTurnBehavior = HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT;
@@ -196,6 +203,32 @@ export function completeLevel(app, result, reason) {
   state.currentLevelStatus = state.levelProgress[state.currentLevelId];
   if (typeof app.hooks.onLevelEnded === "function") {
     app.hooks.onLevelEnded(result, reason);
+  }
+}
+
+export function configureFreePlay(app, updates = {}) {
+  const { state } = app;
+  state.currentModeView = GAME_VIEW_MODES.FREE_PLAY;
+  state.freePlayMode = updates.freePlayMode ?? state.freePlayMode ?? DEFAULT_FREE_PLAY_MODE;
+  state.freePlayTeamSize = updates.freePlayTeamSize ?? state.freePlayTeamSize ?? DEFAULT_FREE_PLAY_TEAM_SIZE;
+  state.freePlayMapKey = updates.freePlayMapKey ?? state.freePlayMapKey ?? DEFAULT_MAP_KEY;
+  state.activeBlocklyTeamTab = updates.activeBlocklyTeamTab ?? (
+    state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER ? (state.activeBlocklyTeamTab || 1) : 1
+  );
+  state.currentGameMode = getGameModeForFreePlayMode(state.freePlayMode);
+  state.currentMapKey = state.freePlayMapKey;
+  state.gameMap = MAPS[state.freePlayMapKey];
+  state.pointsToWin = 2;
+  state.autoStayHumanRunnerIds = [];
+  state.activeTeamSetup = createRandomizedFreePlayTeamSetup(state.freePlayMode, state.freePlayTeamSize, state.randomFn);
+  state.activeFlagSetup = null;
+  state.setupBarriers = [];
+  state.humanTurnBehavior = HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT;
+  state.activeLevelResult = LEVEL_RESULT.NONE;
+  state.lastLevelResultReason = null;
+  initializeDisplayState(app);
+  if (typeof app.hooks.onFreePlayEntered === "function") {
+    app.hooks.onFreePlayEntered();
   }
 }
 

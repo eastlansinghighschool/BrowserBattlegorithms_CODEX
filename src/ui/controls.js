@@ -1,5 +1,6 @@
 import {
   AI_ACTION_TYPES,
+  FREE_PLAY_MODES,
   GAME_VIEW_MODES,
   LEVEL_RESULT,
   MAIN_GAME_STATES,
@@ -7,8 +8,13 @@ import {
   P1_KEY_BINDINGS,
   P2_KEY_BINDINGS
 } from "../config/constants.js";
-import { getWorkspaceXmlText, importWorkspaceXml } from "../ai/blockly/workspace.js";
-import { setBlocklyEditable } from "../ai/blockly/workspace.js";
+import {
+  getActiveBlocklyProgramLabel,
+  getWorkspaceXmlText,
+  importWorkspaceXml,
+  setBlocklyEditable,
+  switchActiveBlocklyTeamTab
+} from "../ai/blockly/workspace.js";
 import { enterFreePlay, goToNextLevel, startLevel, resetCurrentLevel } from "../core/levels.js";
 import { resetGameToSetup, startGame } from "../core/setup.js";
 import { handlePlayerInput } from "../core/turnEngine.js";
@@ -30,6 +36,7 @@ export function bindControls(app) {
   const importWorkspaceButton = document.getElementById("importWorkspaceButton");
   const importWorkspaceInput = document.getElementById("importWorkspaceInput");
   const soundToggleButton = document.getElementById("soundToggleButton");
+  const blocklyProgramTabs = document.getElementById("blockly-program-tabs");
   if (speedSlider && speedValueDisplay) {
     const updateSpeed = () => {
       app.state.animationSpeedFactor = getAnimationSpeedFactorFromSliderValue(speedSlider.value);
@@ -92,7 +99,9 @@ export function bindControls(app) {
       const link = document.createElement("a");
       const modeLabel = app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS
         ? app.state.currentLevelId || "guided-level"
-        : "free-play";
+        : app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER
+          ? `free-play-${getActiveBlocklyProgramLabel(app).toLowerCase().replace(/\s+/g, "-")}`
+          : "free-play-player-team";
       link.href = URL.createObjectURL(blob);
       link.download = `${modeLabel}.xml`;
       link.click();
@@ -113,6 +122,17 @@ export function bindControls(app) {
       importWorkspaceXml(app, xmlText);
       app.syncUi();
       importWorkspaceInput.value = "";
+    });
+  }
+
+  if (blocklyProgramTabs) {
+    blocklyProgramTabs.addEventListener("click", (event) => {
+      const target = event.target.closest("button[data-blockly-team-tab]");
+      if (!target) {
+        return;
+      }
+      switchActiveBlocklyTeamTab(app, Number(target.dataset.blocklyTeamTab));
+      app.syncUi();
     });
   }
 

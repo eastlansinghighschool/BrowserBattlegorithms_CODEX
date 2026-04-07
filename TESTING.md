@@ -36,6 +36,9 @@ Playwright tests cover:
 - Blockly toolbox restriction in guided levels and broader tooling in free play
 - free-play availability of the parameterized `Move Toward` block and its target dropdown options
 - free-play availability and behavior of `Move Randomly`, `Freeze Opponents`, and the newer readiness/team/territory condition blocks
+- free-play setup controls for mode, team size, and map selection
+- PvP free-play team tab switching and separate Blockly programs per side
+- PvCPU Easy and PvCPU Tactical startup and behavior smoke coverage
 - guided completion flow, including `Next Level`
 - Blockly becoming editable again after guided pass/fail results
 - guided level picker popover behavior
@@ -46,3 +49,4 @@ Playwright tests cover:
 - The suite is intentionally split between pure JavaScript rule coverage and browser integration coverage.
 - Blockly workspace loading for tests uses a narrow test hook to avoid brittle drag-and-drop automation for most scenarios.
 - Browser tests currently focus on high-value guided-mode regressions and smoke coverage rather than exhaustive visual or full-playthrough automation.
+- Release validation should include `npm test`, `npm run build`, and `npm run test:browser` before shipping or deploying.

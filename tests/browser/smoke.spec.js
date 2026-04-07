@@ -810,6 +810,111 @@ test("free play re-randomizes team directions each time it is entered while keep
   expect(teamDirections.first).not.toEqual(teamDirections.second);
 });
 
+test("free play setup panel exposes mode, team size, and map selectors", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Free Play" }).click();
+
+  await expect(page.locator('select[data-action="free-play-mode"]')).toBeVisible();
+  await expect(page.locator('select[data-action="free-play-team-size"]')).toBeVisible();
+  await expect(page.locator('select[data-action="free-play-map"]')).toBeVisible();
+});
+
+test("free play PvP uses separate Blockly program tabs that preserve different programs", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Free Play" }).click();
+
+  await expect(page.getByRole("button", { name: "Team 1 Program" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Team 2 Program" })).toBeVisible();
+
+  await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24">
+          <next><block type="battlegorithms_move_forward"></block></next>
+        </block>
+      </xml>
+    `);
+  });
+
+  await page.getByRole("button", { name: "Team 2 Program" }).click();
+  await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.loadWorkspaceXml(`
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <block type="battlegorithms_on_each_turn" x="24" y="24">
+          <next><block type="battlegorithms_stay_still"></block></next>
+        </block>
+      </xml>
+    `);
+  });
+
+  await page.getByRole("button", { name: "Team 1 Program" }).click();
+  const team1Xml = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getWorkspaceXmlText());
+  await page.getByRole("button", { name: "Team 2 Program" }).click();
+  const team2Xml = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getWorkspaceXmlText());
+
+  expect(team1Xml).toContain("battlegorithms_move_forward");
+  expect(team2Xml).toContain("battlegorithms_stay_still");
+});
+
+test("free play selectors update runner counts and map layout", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Free Play" }).click();
+
+  await page.locator('select[data-action="free-play-team-size"]').selectOption("6");
+  await page.locator('select[data-action="free-play-map"]').selectOption("forkedLanes");
+
+  const state = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getLevelState());
+  const details = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    return {
+      runnerCount: hooks.app.state.allRunners.length,
+      wallCount: hooks.app.state.gameMap.flat().filter((cell) => cell === 1).length
+    };
+  });
+
+  expect(state.currentModeView).toBe("FREE_PLAY");
+  expect(state.teams["1"].runners.length).toBe(6);
+  expect(state.teams["2"].runners.length).toBe(6);
+  expect(details.runnerCount).toBe(12);
+  expect(details.wallCount).toBeGreaterThan(0);
+});
+
+test("PvCPU easy and tactical free play build distinct CPU opponent setups", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Free Play" }).click();
+
+  await page.locator('select[data-action="free-play-mode"]').selectOption("PVCPU_EASY");
+  await page.locator('select[data-action="free-play-team-size"]').selectOption("4");
+  const easyState = await page.evaluate(() => {
+    const runners = window.__BBA_TEST_HOOKS__.app.state.allRunners;
+    return {
+      humans: runners.filter((runner) => runner.isHumanControlled).length,
+      npcs: runners.filter((runner) => runner.isNPC).length,
+      behaviors: [...new Set(runners.filter((runner) => runner.isNPC).map((runner) => runner.cpuBehavior))]
+    };
+  });
+
+  await page.locator('select[data-action="free-play-mode"]').selectOption("PVCPU_TACTICAL");
+  await page.locator('select[data-action="free-play-team-size"]').selectOption("5");
+  const tacticalState = await page.evaluate(() => {
+    const runners = window.__BBA_TEST_HOOKS__.app.state.allRunners.filter((runner) => runner.isNPC);
+    return {
+      cpuCount: runners.length,
+      roles: runners.map((runner) => runner.cpuRole).sort(),
+      behaviors: [...new Set(runners.map((runner) => runner.cpuBehavior))]
+    };
+  });
+
+  expect(easyState.humans).toBe(1);
+  expect(easyState.npcs).toBe(4);
+  expect(easyState.behaviors).toEqual(["FREE_PLAY_EASY"]);
+  expect(tacticalState.cpuCount).toBe(5);
+  expect(tacticalState.roles).toEqual(["attacker", "attacker", "defender", "defender", "defender"]);
+  expect(tacticalState.behaviors).toEqual(["FREE_PLAY_TACTICAL_ATTACKER", "FREE_PLAY_TACTICAL_DEFENDER"]);
+});
+
 test("seeded free-play Move Toward programs choose the expected helper direction", async ({ page }) => {
   await page.goto("/");
   const actions = await page.evaluate(() => {

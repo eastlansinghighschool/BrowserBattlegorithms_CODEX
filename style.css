@@ -511,6 +511,35 @@ button:disabled {
   width: 100%;
 }
 
+#blockly-program-tabs,
+#blockly-program-summary {
+  margin-bottom: 10px;
+}
+
+.blockly-program-tab-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.free-play-setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.free-play-setup label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.free-play-setup select {
+  padding: 6px 8px;
+}
+
 @media (max-width: 900px) {
   #game-container {
     flex-direction: column;

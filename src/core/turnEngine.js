@@ -24,6 +24,7 @@ import { checkForFlagPickup, checkForScoring } from "./scoring.js";
 import { resetRound } from "./setup.js";
 import { calculateNpcType1Action } from "../ai/npc/npcType1.js";
 import { calculateNpcType2Action } from "../ai/npc/npcType2.js";
+import { calculateFreePlayCpuAction } from "../ai/npc/freePlayCpu.js";
 import { getAIAllyAction } from "../ai/blockly/interpreter.js";
 import { Barrier } from "../entities/Barrier.js";
 import { evaluateLevelProgress } from "./levels.js";
@@ -108,20 +109,19 @@ export function handlePlayerInput(app, runner, actionData) {
 function planActionForActiveRunner(app, runner) {
   const { state } = app;
   if (runner.isNPC) {
-    const decision = ACTIVE_TEAM2_NPC_BEHAVIOR === NPC_BEHAVIORS.SIMPLE_TARGET
-      ? calculateNpcType1Action(runner, state)
-      : calculateNpcType2Action(runner, state);
+    const decision = runner.cpuBehavior
+      ? calculateFreePlayCpuAction(runner, state)
+      : (
+          ACTIVE_TEAM2_NPC_BEHAVIOR === NPC_BEHAVIORS.SIMPLE_TARGET
+            ? calculateNpcType1Action(runner, state)
+            : calculateNpcType2Action(runner, state)
+        );
     state.queuedActionForCurrentRunner = translateActionDecision(runner, decision, state);
     state.currentTurnState = TURN_STATES.PROCESSING_ACTION;
     return;
   }
 
-  let aiDecision;
-  if (runner.team === 1) {
-    aiDecision = getAIAllyAction(app, runner);
-  } else {
-    aiDecision = { type: AI_ACTION_TYPES.MOVE_FORWARD };
-  }
+  let aiDecision = getAIAllyAction(app, runner);
 
   let queued = translateActionDecision(runner, aiDecision, state);
   if (queued.actionType === AI_ACTION_TYPES.JUMP_FORWARD && !runner.canJump) {

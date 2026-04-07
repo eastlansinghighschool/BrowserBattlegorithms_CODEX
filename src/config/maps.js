@@ -70,3 +70,11 @@ export const MAPS = {
 };
 
 export const DEFAULT_MAP_KEY = "simpleAisle";
+
+export const FREE_PLAY_MAP_OPTIONS = [
+  { key: "simpleAisle", label: "Simple Aisle" },
+  { key: "complex", label: "Complex" },
+  { key: "forkedLanes", label: "Forked Lanes" },
+  { key: "midfieldPressure", label: "Midfield Pressure" },
+  { key: "wideScrimmage", label: "Wide Scrimmage" }
+];

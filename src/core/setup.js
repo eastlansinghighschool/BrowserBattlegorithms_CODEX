@@ -10,6 +10,7 @@ import { Runner } from "../entities/Runner.js";
 import {
   buildRuntimeTeams,
   createRandomizedFreePlayTeamSetup,
+  getGameModeForFreePlayMode,
   getDefaultSlotPosition,
   getEnemyTeamId,
   getRunnerSlotMetadata
@@ -54,7 +55,7 @@ function resolveActiveTeamSetup(state) {
     return structuredClone(state.activeTeamSetup);
   }
 
-  return createRandomizedFreePlayTeamSetup(state.currentGameMode, state.randomFn);
+  return createRandomizedFreePlayTeamSetup(state.freePlayMode, state.freePlayTeamSize, state.randomFn);
 }
 
 function resolveFlagOverrideForTeam(state, teamId) {
@@ -82,6 +83,8 @@ function applyRunnerSetup(runner, teamConfig, runnerSpec) {
   runner.canJump = runnerSpec.canJump ?? true;
   runner.canPlaceBarrier = runnerSpec.canPlaceBarrier ?? true;
   runner.hasEnemyFlag = runnerSpec.hasEnemyFlag ?? false;
+  runner.cpuBehavior = runnerSpec.cpuBehavior ?? null;
+  runner.cpuRole = runnerSpec.cpuRole ?? null;
 
   if (runnerSpec.isFrozen) {
     runner.setFrozen(runnerSpec.frozenTurnsRemaining || 1);
@@ -101,7 +104,8 @@ function buildRunnersFromTeams(state) {
       const gridY = runnerSpec.gridY ?? defaultPosition.gridY;
       const isHumanControlled = runnerSpec.isHumanControlled ?? slotMetadata.isHumanControlled;
       const isNPC = runnerSpec.isNPC ?? slotMetadata.isNPC;
-      const runner = new Runner(gridX, gridY, teamId, isHumanControlled, slotMetadata.idSuffix, isNPC);
+      const idSuffix = runnerSpec.idSuffix ?? slotMetadata.idSuffix;
+      const runner = new Runner(gridX, gridY, teamId, isHumanControlled, idSuffix, isNPC);
       applyRunnerSetup(runner, teamConfig, runnerSpec);
       if (!runner.isHumanControlled && !runner.isNPC) {
         runner.allyIndex = allyIndex;
@@ -169,6 +173,9 @@ function applySetupBarriers(state) {
 
 export function initializeMatch(app) {
   const { state } = app;
+  if (state.currentModeView === GAME_VIEW_MODES.FREE_PLAY) {
+    state.currentGameMode = getGameModeForFreePlayMode(state.freePlayMode);
+  }
   state.teams = buildRuntimeTeams(resolveActiveTeamSetup(state));
   buildRunnersFromTeams(state);
   buildFlagsFromTeams(state);
@@ -187,6 +194,9 @@ export function initializeMatch(app) {
 
 export function initializeDisplayState(app) {
   const { state } = app;
+  if (state.currentModeView === GAME_VIEW_MODES.FREE_PLAY) {
+    state.currentGameMode = getGameModeForFreePlayMode(state.freePlayMode);
+  }
   state.teams = buildRuntimeTeams(resolveActiveTeamSetup(state));
   buildRunnersFromTeams(state);
   buildFlagsFromTeams(state);

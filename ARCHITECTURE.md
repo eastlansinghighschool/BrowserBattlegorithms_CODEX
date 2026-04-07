@@ -59,6 +59,25 @@ This refactor separates game rules from rendering, DOM wiring, and AI integratio
   - XML import/export helpers layered on top of the same workspace serialization path
 - Sound feedback is centralized in `src/ui/sound.js`, keeping audio triggers out of rendering code and letting the core engine emit semantic events such as freeze, flag pickup, score, and level pass/fail.
 
+## Phase 9 Free Play Productization
+
+- Free play now has its own configuration state, separate from guided levels:
+  - free-play mode (`PvP`, `PvCPU Easy`, `PvCPU Tactical`)
+  - team size (`2-6` total runners per side)
+  - map key
+  - active Blockly team tab for PvP
+- Free-play runtime team generation is now parameterized instead of assuming one fixed runner layout.
+  - PvP builds one human plus N-1 Blockly allies on each side.
+  - PvCPU builds one human plus N-1 Blockly allies for the player and N CPU runners for the opponent.
+- Free-play CPU strategies are separated from the guided NPC teaching behaviors:
+  - easy sandbox CPU
+  - tactical attacker CPU
+  - tactical defender CPU
+- Blockly persistence now has distinct free-play contexts:
+  - one player-team program for PvCPU
+  - one Team 1 program and one Team 2 program for PvP
+- The visible Blockly editor remains a single panel, but PvP switches the loaded XML by active team tab while the turn engine can still resolve the correct program for off-screen teams.
+
 ## Boundaries
 
 - Rule outcomes belong in `src/core/`.
