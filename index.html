@@ -3,12 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Browser Battlegorithms - Phase 7 MVP</title>
+    <title>Browser Battlegorithms</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
-    <header>
-      <h1>Browser Battlegorithms - Phase 7 MVP</h1>
+    <header class="app-header">
+      <div class="app-header-inner">
+        <h1>Browser Battlegorithms</h1>
+      </div>
     </header>
     <div id="tutorial-overlay" aria-live="polite"></div>
     <div id="goal-burst-overlay" aria-hidden="true"></div>
@@ -18,6 +21,7 @@
         <div id="instructions">
           <div id="primary-level-actions">
             <button id="playResetButton" style="padding: 10px 20px; font-size: 16px;">Play</button>
+            <button id="showTutorialButton" style="padding: 10px 20px; font-size: 16px; display: none;">Show Tutorial</button>
             <button id="nextLevelButton" style="padding: 10px 20px; font-size: 16px; display: none;">Next Level</button>
           </div>
           <div id="game-controls" style="margin-top: 10px; padding: 10px; background-color: #fff; border-radius: 8px; text-align: center;">
@@ -26,22 +30,27 @@
             <span id="speedValue" style="margin-left: 10px;">Normal</span>
             <p id="scoreDisplay" style="margin-top:10px; font-weight: bold;">Turn: 1 | Scores: T1: 0 - T2: 0 (Win at 2)</p>
           </div>
-          <div id="level-panel"></div>
-          <p>Human (🏃🏾‍♀️‍➡️): Use WASD Keys to move. B: barrier, J: jump, X: stay still.</p>
-          <p>Program the AI Ally (🏃🏿‍♂️‍➡️) using the Blockly blocks.</p>
         </div>
       </main>
+      <aside id="lesson-region">
+        <div id="level-panel"></div>
+      </aside>
       <aside id="blockly-region">
         <h2 id="blocklyPanelTitle">AI Ally Program</h2>
         <div id="blockly-program-tabs"></div>
         <div id="blockly-program-summary"></div>
         <div id="blockly-toolbar">
+          <div id="blockly-size-controls" aria-label="Blockly workspace size">
+            <button type="button" data-blockly-size="compact">Compact</button>
+            <button type="button" data-blockly-size="standard">Standard</button>
+            <button type="button" data-blockly-size="tall">Tall</button>
+          </div>
           <button id="exportWorkspaceButton" type="button">Export XML</button>
           <button id="importWorkspaceButton" type="button">Import XML</button>
           <button id="soundToggleButton" type="button">Sound: On</button>
           <input id="importWorkspaceInput" type="file" accept=".xml,text/xml" hidden>
         </div>
-        <div id="blocklyDiv" style="height: 400px; width: 100%;"></div>
+        <div id="blocklyDiv"></div>
       </aside>
     </div>
     <script type="module" src="./src/main.js"></script>

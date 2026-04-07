@@ -83,6 +83,26 @@ function renderTutorialDemoWorkspace(app, step) {
   Blockly.Xml.domToWorkspace(xml, app.tutorialDemoWorkspace);
 }
 
+function renderTutorialVisuals(step) {
+  if (!(step?.visualItems || []).length) {
+    return "";
+  }
+
+  return `
+    <div class="tutorial-visuals">
+      ${step.visualItems.map((item) => `
+        <div class="tutorial-visual-item">
+          <span class="tutorial-visual-emoji" aria-hidden="true">${item.emoji || ""}</span>
+          <div>
+            <span class="tutorial-visual-label">${item.label || ""}</span>
+            ${item.description ? `<span class="tutorial-visual-description">${item.description}</span>` : ""}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 export function initializeTutorialState(app) {
   app.state.tutorialSeen = getStoredTutorialSeen();
   app.state.activeTutorial = null;
@@ -242,6 +262,7 @@ export function renderTutorialOverlay(app) {
   const hasDemo = Boolean(step.demoBlocklyXml);
   const demoTitle = step.demoTitle ? `<p class="tutorial-demo-title">${step.demoTitle}</p>` : "";
   const demoCaption = step.demoCaption ? `<p class="tutorial-demo-caption">${step.demoCaption}</p>` : "";
+  const visuals = renderTutorialVisuals(step);
 
   overlay.classList.add("tutorial-overlay-active");
   overlay.innerHTML = `
@@ -251,6 +272,7 @@ export function renderTutorialOverlay(app) {
       <p class="tutorial-step-count">Step ${activeTutorial.currentIndex + 1} of ${activeTutorial.steps.length}</p>
       <h3>${step.title}</h3>
       <p>${step.body}</p>
+      ${visuals}
       ${hasDemo ? `
         <div class="tutorial-demo">
           ${demoTitle}

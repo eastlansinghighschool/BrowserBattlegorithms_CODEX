@@ -19,7 +19,6 @@ import {
   enterFreePlay,
   enterGuidedMode,
   getCurrentLevel,
-  getNextAvailableLevelId,
   goToNextLevel,
   resetCurrentLevel,
   setGuidedHumanTurnBehavior,
@@ -64,6 +63,92 @@ function getLevelStatusLabel(status) {
     return "Locked";
   }
   return "Available";
+}
+
+function getResultStateLabel(app) {
+  if (app.state.activeLevelResult === LEVEL_RESULT.PASSED) {
+    return "Passed";
+  }
+  if (app.state.activeLevelResult === LEVEL_RESULT.FAILED) {
+    return "Try Again";
+  }
+  if (app.state.mainGameState === "RUNNING") {
+    return "In Progress";
+  }
+  return "Ready";
+}
+
+function renderLegendItems(level) {
+  if (!(level.legendItems || []).length) {
+    return "";
+  }
+
+  return `
+    <div class="lesson-legend">
+      <p class="lesson-legend-title">What you are looking at</p>
+      <div class="lesson-legend-grid">
+        ${level.legendItems.map((item) => `
+          <div class="lesson-legend-item">
+            <span class="lesson-legend-emoji" aria-hidden="true">${escapeHtml(item.emoji || "")}</span>
+            <div>
+              <span class="lesson-legend-label">${escapeHtml(item.label)}</span>
+              <span class="lesson-legend-description">${escapeHtml(item.description)}</span>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderAvailableTools(level) {
+  const rows = [
+    level.toolboxBlockTypes?.length
+      ? `<p class="lesson-inline-list"><strong>Blocks:</strong> ${level.toolboxBlockTypes.map((blockType) => escapeHtml(getBlockDisplayLabel(blockType))).join(", ")}</p>`
+      : "",
+    level.moveTowardTargetTypes?.length
+      ? `<p class="lesson-inline-list"><strong>Move Toward:</strong> ${level.moveTowardTargetTypes.map((value) => escapeHtml(getMoveTowardTargetLabel(value))).join(", ")}</p>`
+      : "",
+    level.sensorObjectTypes?.length
+      ? `<p class="lesson-inline-list"><strong>Sensors:</strong> ${level.sensorObjectTypes.map((value) => escapeHtml(getSensorObjectLabel(value))).join(", ")}</p>`
+      : "",
+    level.sensorRelationTypes?.length
+      ? `<p class="lesson-inline-list"><strong>Relations:</strong> ${level.sensorRelationTypes.map((value) => escapeHtml(getSensorRelationLabel(value))).join(", ")}</p>`
+      : ""
+  ].filter(Boolean);
+
+  if (!rows.length) {
+    return "";
+  }
+
+  return `
+    <details class="lesson-disclosure">
+      <summary>Available Tools</summary>
+      <div class="lesson-disclosure-content">
+        ${rows.join("")}
+      </div>
+    </details>
+  `;
+}
+
+function renderLessonDetails(app, level) {
+  const detailItems = [
+    `<li><strong>Goal:</strong> ${escapeHtml(describeGoal(level))}</li>`,
+    app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT
+      ? "<li><strong>Human turns:</strong> This level waits for keyboard input from the human runner.</li>"
+      : "<li><strong>Human turns:</strong> Human turns auto-skip so you can focus on the puzzle.</li>"
+  ];
+
+  return `
+    <details class="lesson-disclosure">
+      <summary>More Details</summary>
+      <div class="lesson-disclosure-content">
+        <ul class="lesson-detail-list">
+          ${detailItems.join("")}
+        </ul>
+      </div>
+    </details>
+  `;
 }
 
 function renderLevelPickerItems(app) {
@@ -134,9 +219,16 @@ function renderFreePlayOptions(app) {
         <select data-action="free-play-map">${mapOptions}</select>
       </label>
     </div>
-    <p><strong>Current setup:</strong> ${escapeHtml(getFreePlayModeLabel(app.state.freePlayMode))} | ${escapeHtml(currentMapLabel)} | ${escapeHtml(`${app.state.freePlayTeamSize} runners per side`)}</p>
-    <p><strong>Blockly:</strong> ${escapeHtml(programSummary)}</p>
-    <p><strong>Controls:</strong> Team 1 uses WASD, J/F, B, X. Team 2 uses O K L ;, M, I, .</p>
+    <p class="student-lesson-goal">Build a sandbox match, then test ideas with humans, Blockly allies, and CPU teams.</p>
+    <p class="lesson-inline-list"><strong>Current setup:</strong> ${escapeHtml(getFreePlayModeLabel(app.state.freePlayMode))} | ${escapeHtml(currentMapLabel)} | ${escapeHtml(`${app.state.freePlayTeamSize} runners per side`)}</p>
+    <p class="lesson-inline-list"><strong>Blockly:</strong> ${escapeHtml(programSummary)}</p>
+    <details class="lesson-disclosure" open>
+      <summary>Controls</summary>
+      <div class="lesson-disclosure-content">
+        <p class="lesson-support-note">Team 1 uses WASD to move, J/F to jump, B to place a barrier, and X to stay still.</p>
+        <p class="lesson-support-note">Team 2 uses O K L ; to move, M to jump, I to place a barrier, and . to stay still.</p>
+      </div>
+    </details>
   `;
 }
 
@@ -244,9 +336,6 @@ export function renderLevelPanel(app) {
       ? `<p class="level-result failure">Level failed. ${resultReason}</p>`
       : "";
 
-  const nextLevelButton = app.state.activeLevelResult === LEVEL_RESULT.PASSED && getNextAvailableLevelId(app)
-    ? '<button data-action="next-level">Next Level</button>'
-    : "";
   const pickerOpen = Boolean(app.ui.isLevelPickerOpen);
 
   panel.innerHTML = `
@@ -265,21 +354,22 @@ export function renderLevelPanel(app) {
         </button>
         ${pickerOpen ? `<div class="level-picker-popover">${renderLevelPickerItems(app)}</div>` : ""}
       </div>
-      <div class="level-summary">
-        <p>${escapeHtml(currentLevel.description)}</p>
-        <p class="level-intro">${escapeHtml(currentLevel.introText || "")}</p>
-        <p><strong>Goal:</strong> ${escapeHtml(describeGoal(currentLevel))}</p>
-        <p><strong>Allowed blocks:</strong> ${currentLevel.toolboxBlockTypes.map((blockType) => escapeHtml(getBlockDisplayLabel(blockType))).join(", ")}</p>
-        ${currentLevel.moveTowardTargetTypes?.length ? `<p><strong>Move Toward targets:</strong> ${currentLevel.moveTowardTargetTypes.map((value) => escapeHtml(getMoveTowardTargetLabel(value))).join(", ")}</p>` : ""}
-        ${currentLevel.sensorObjectTypes?.length ? `<p><strong>Sensor objects:</strong> ${currentLevel.sensorObjectTypes.map((value) => escapeHtml(getSensorObjectLabel(value))).join(", ")}</p>` : ""}
-        ${currentLevel.sensorRelationTypes?.length ? `<p><strong>Sensor relations:</strong> ${currentLevel.sensorRelationTypes.map((value) => escapeHtml(getSensorRelationLabel(value))).join(", ")}</p>` : ""}
-        <p><strong>Human turns:</strong> ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.AUTO_SKIP ? "Auto Skip" : "Wait For Input"}</p>
-        <div class="human-turn-toggle">
-          <button data-action="set-human-auto-skip" ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.AUTO_SKIP ? "disabled" : ""}>Auto Skip Human</button>
-          <button data-action="set-human-wait" ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT ? "disabled" : ""}>Wait For Input</button>
+      <div class="level-summary student-lesson-card">
+        <div class="student-lesson-topline">
+          <span class="lesson-status-pill">${escapeHtml(getResultStateLabel(app))}</span>
+          ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT ? '<span class="lesson-mode-pill">Keyboard practice level</span>' : ""}
         </div>
-        <p><strong>Status:</strong> ${escapeHtml(app.state.currentLevelStatus)}</p>
-        ${(currentLevel.tips || []).length ? `<div class="level-tips"><strong>Tips:</strong><ul>${currentLevel.tips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul></div>` : ""}
+        <div>
+          <h3 class="student-lesson-title">${escapeHtml(currentLevel.title)}</h3>
+          <p class="student-lesson-goal">${escapeHtml(currentLevel.description)}</p>
+        </div>
+        ${currentLevel.introText ? `<p class="level-intro">${escapeHtml(currentLevel.introText)}</p>` : ""}
+        ${renderLegendItems(currentLevel)}
+        ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT ? `
+          <div class="lesson-alert">
+            This level teaches direct keyboard control. Use the controls shown in the Blockly panel while the human runner is active.
+          </div>
+        ` : ""}
         ${resultMessage}
         <div class="level-actions">
           <button data-action="start-current-level">${
@@ -288,15 +378,33 @@ export function renderLevelPanel(app) {
             app.state.activeLevelResult === LEVEL_RESULT.FAILED
               ? "Reset Level"
               : "Start Level"
-          }</button>
-          <button data-action="replay-tutorial">Show Tutorial</button>
-          ${nextLevelButton}
-        </div>
+            }</button>
+          </div>
+        ${(currentLevel.tips || []).length ? `
+          <details class="lesson-disclosure">
+            <summary>Hints</summary>
+            <div class="lesson-disclosure-content">
+              <ul class="lesson-detail-list">${currentLevel.tips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul>
+            </div>
+          </details>
+        ` : ""}
+        ${renderAvailableTools(currentLevel)}
+        ${renderLessonDetails(app, currentLevel)}
+        <details class="lesson-disclosure">
+          <summary>Human Turn Options</summary>
+          <div class="lesson-disclosure-content">
+            <p class="lesson-support-note">Use auto-skip for programming-focused lessons, or wait-for-input when you want the human runner to act.</p>
+            <div class="human-turn-toggle">
+              <button data-action="set-human-auto-skip" ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.AUTO_SKIP ? "disabled" : ""}>Auto Skip Human</button>
+              <button data-action="set-human-wait" ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT ? "disabled" : ""}>Wait For Input</button>
+            </div>
+          </div>
+        </details>
       </div>
     ` : `
-      <div class="level-summary">
+      <div class="level-summary free-play-card">
         <h3>Free Play</h3>
-        <p>Play sandbox matches with configurable teams, maps, and CPU difficulty.</p>
+        <p>Set up a sandbox match with the map, team size, and opponents you want.</p>
         ${renderFreePlayOptions(app)}
       </div>
     `}

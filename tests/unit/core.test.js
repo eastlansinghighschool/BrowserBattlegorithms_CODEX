@@ -1007,12 +1007,12 @@ test("optional Move Randomly lab is present after the capstone", () => {
 
 test("starter levels include onboarding copy and tutorial steps", () => {
   const [firstLevel, secondLevel] = getLevelDefinitions();
-  assert.ok(firstLevel.introText.includes("frozen"));
+  assert.ok(firstLevel.introText.includes("quiet practice board"));
   assert.ok(firstLevel.tutorialSteps.length >= 3);
-  assert.ok(secondLevel.tutorialSteps.some((step) => step.body.includes("Move Backward")));
+  assert.ok(secondLevel.tutorialSteps.some((step) => step.body.includes("flag")));
   const thirdLevel = getLevelDefinitions().find((level) => level.id === "score-a-point");
   assert.ok(thirdLevel.toolboxBlockTypes.includes(BLOCK_TYPES.IF_HAVE_ENEMY_FLAG_ELSE));
-  assert.ok(thirdLevel.tutorialSteps.some((step) => step.body.includes("first move")));
+  assert.ok(thirdLevel.tutorialSteps.some((step) => step.body.includes("carry")));
 });
 
 test("guided toolbox restriction reflects each level's allowed blocks", () => {

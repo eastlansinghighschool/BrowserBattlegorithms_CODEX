@@ -22,7 +22,11 @@ export function renderBlocklyPanel(app) {
   if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
     title.textContent = "AI Ally Program";
     tabs.innerHTML = "";
-    summary.innerHTML = "";
+    summary.innerHTML = app.state.humanTurnBehavior === "WAIT_FOR_INPUT"
+      ? `
+        <p><strong>Keyboard practice:</strong> Team 1 uses W A S D to move, J/F to jump, B to place a barrier, and X to stay still.</p>
+      `
+      : "";
     return;
   }
 

@@ -3,6 +3,7 @@ import { getNextAvailableLevelId } from "../core/levels.js";
 
 export function setPlayButtonState(app) {
   const button = document.getElementById("playResetButton");
+  const tutorialButton = document.getElementById("showTutorialButton");
   const nextLevelButton = document.getElementById("nextLevelButton");
   if (!button) {
     return;
@@ -10,6 +11,9 @@ export function setPlayButtonState(app) {
 
   if (app.state.showModePicker) {
     button.style.display = "none";
+    if (tutorialButton) {
+      tutorialButton.style.display = "none";
+    }
     if (nextLevelButton) {
       nextLevelButton.style.display = "none";
     }
@@ -17,11 +21,17 @@ export function setPlayButtonState(app) {
   }
 
   button.style.display = "";
+  if (tutorialButton) {
+    tutorialButton.style.display = "none";
+  }
   if (nextLevelButton) {
     nextLevelButton.style.display = "none";
   }
 
   if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
+    if (tutorialButton) {
+      tutorialButton.style.display = "";
+    }
     if (app.state.mainGameState === "RUNNING") {
       button.textContent = "Reset Level";
     } else if (app.state.activeLevelResult === LEVEL_RESULT.PASSED) {

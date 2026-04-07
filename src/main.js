@@ -8,6 +8,7 @@ import {
   getSensorRelationLabels,
   getWorkspaceXmlText,
   importWorkspaceXml,
+  initializeBlocklyPanelSize,
   initBlockly,
   loadWorkspaceFromLocalStorage,
   setBlocklyEditable,
@@ -91,6 +92,7 @@ app.hooks.chooseInitialMode = (mode) => {
 
 app.syncUi = () => {
   app.hooks.updateControlsVisibility?.();
+  app.hooks.syncBlocklySizeControls?.();
   updateScoreDisplay(app);
   setPlayButtonState(app);
   renderLevelPanel(app);
@@ -103,6 +105,7 @@ app.syncUi = () => {
 initializeLevelState(app);
 initializeTutorialState(app);
 initBlockly(app);
+initializeBlocklyPanelSize(app);
 bindControls(app);
 bindGoalBurstOverlay(app);
 bindLevelPanel(app);

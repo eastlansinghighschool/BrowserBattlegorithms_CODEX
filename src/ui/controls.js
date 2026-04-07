@@ -12,6 +12,7 @@ import {
   getActiveBlocklyProgramLabel,
   getWorkspaceXmlText,
   importWorkspaceXml,
+  setBlocklyPanelSize,
   setBlocklyEditable,
   switchActiveBlocklyTeamTab
 } from "../ai/blockly/workspace.js";
@@ -37,6 +38,7 @@ export function bindControls(app) {
   const importWorkspaceInput = document.getElementById("importWorkspaceInput");
   const soundToggleButton = document.getElementById("soundToggleButton");
   const blocklyProgramTabs = document.getElementById("blockly-program-tabs");
+  const blocklySizeControls = document.getElementById("blockly-size-controls");
   if (speedSlider && speedValueDisplay) {
     const updateSpeed = () => {
       app.state.animationSpeedFactor = getAnimationSpeedFactorFromSliderValue(speedSlider.value);
@@ -57,6 +59,7 @@ export function bindControls(app) {
   };
 
   const playResetButton = document.getElementById("playResetButton");
+  const showTutorialButton = document.getElementById("showTutorialButton");
   const nextLevelButton = document.getElementById("nextLevelButton");
   if (playResetButton) {
     playResetButton.addEventListener("click", () => {
@@ -89,6 +92,12 @@ export function bindControls(app) {
     nextLevelButton.addEventListener("click", () => {
       goToNextLevel(app);
       app.syncUi();
+    });
+  }
+
+  if (showTutorialButton) {
+    showTutorialButton.addEventListener("click", () => {
+      app.hooks.startCurrentLevelTutorial?.(true);
     });
   }
 
@@ -146,6 +155,27 @@ export function bindControls(app) {
       playSound(app.state, "flag-pickup");
     });
     syncSoundButton();
+  }
+
+  if (blocklySizeControls) {
+    const syncBlocklySizeControls = () => {
+      const selectedSize = app.state.blocklyPanelSize || "standard";
+      [...blocklySizeControls.querySelectorAll("button[data-blockly-size]")].forEach((button) => {
+        button.disabled = button.dataset.blocklySize === selectedSize;
+      });
+    };
+
+    blocklySizeControls.addEventListener("click", (event) => {
+      const target = event.target.closest("button[data-blockly-size]");
+      if (!target) {
+        return;
+      }
+      setBlocklyPanelSize(app, target.dataset.blocklySize);
+      syncBlocklySizeControls();
+    });
+
+    app.hooks.syncBlocklySizeControls = syncBlocklySizeControls;
+    syncBlocklySizeControls();
   }
 }
 

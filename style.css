@@ -8,31 +8,54 @@ body {
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
+  --blockly-height: 420px;
 }
 
-header {
+.app-header {
   width: 100%;
-  background: linear-gradient(90deg, #1f4e5f, #3a7d63);
+  background: rgba(24, 55, 68, 0.92);
   color: white;
-  padding: 12px 0;
-  text-align: center;
-  margin-bottom: 16px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.app-header-inner {
+  width: min(1440px, 96%);
+  margin: 0 auto;
+  padding: 8px 16px;
+}
+
+.app-kicker {
+  display: none;
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(1.2rem, 1.6vw, 1.55rem);
+  line-height: 1.15;
 }
 
 #game-container {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(560px, 1.4fr) minmax(300px, 0.9fr);
+  align-items: start;
+  gap: 18px;
   padding: 10px 16px 24px;
-  width: min(1240px, 96%);
+  width: min(1380px, 96%);
 }
 
 #simulation-region {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+#lesson-region {
+  min-width: 280px;
 }
 
 #canvas-container {
@@ -45,6 +68,7 @@ header {
 }
 
 #instructions,
+#lesson-region,
 #blockly-region {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(36, 64, 74, 0.15);
@@ -53,7 +77,7 @@ header {
 }
 
 #instructions {
-  padding: 14px;
+  padding: 14px 16px;
   text-align: center;
   width: calc(12 * 50px);
 }
@@ -97,7 +121,6 @@ button:disabled {
 
 #blockly-region {
   padding: 15px;
-  width: 40%;
   min-width: 300px;
 }
 
@@ -123,8 +146,33 @@ button:disabled {
   color: white;
 }
 
+#blockly-size-controls {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(59, 111, 144, 0.12);
+}
+
+#blockly-size-controls button {
+  background: transparent;
+  color: #24404a;
+  border: 1px solid transparent;
+}
+
+#blockly-size-controls button:disabled {
+  opacity: 1;
+  background: #3b6f90;
+  color: white;
+}
+
+#blocklyDiv {
+  width: 100%;
+  height: var(--blockly-height);
+  min-height: 320px;
+}
+
 #level-panel {
-  margin: 14px 0;
   padding: 14px;
   border-radius: 12px;
   text-align: left;
@@ -231,6 +279,141 @@ button:disabled {
   padding: 10px 12px;
   border-radius: 10px;
   background: rgba(58, 125, 99, 0.1);
+}
+
+.student-lesson-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.student-lesson-topline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lesson-status-pill,
+.lesson-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(59, 111, 144, 0.12);
+  color: #24404a;
+  font-size: 0.9rem;
+}
+
+.student-lesson-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.student-lesson-goal {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.lesson-legend {
+  display: grid;
+  gap: 8px;
+}
+
+.lesson-legend-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #40515a;
+}
+
+.lesson-legend-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.lesson-legend-item {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(36, 64, 74, 0.1);
+}
+
+.lesson-legend-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.lesson-legend-label {
+  font-weight: 700;
+}
+
+.lesson-legend-description {
+  display: block;
+  margin-top: 2px;
+  color: #485963;
+  font-size: 0.93rem;
+}
+
+.lesson-alert {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(184, 95, 60, 0.09);
+  border: 1px solid rgba(184, 95, 60, 0.16);
+  color: #63311d;
+}
+
+.lesson-disclosure {
+  border-radius: 12px;
+  border: 1px solid rgba(36, 64, 74, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0 12px;
+}
+
+.lesson-disclosure summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 700;
+}
+
+.lesson-disclosure-content {
+  padding: 0 0 12px;
+}
+
+.lesson-inline-list {
+  margin: 0;
+  color: #40515a;
+}
+
+.lesson-inline-list strong {
+  color: #1e2b33;
+}
+
+.lesson-detail-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.lesson-detail-list li + li {
+  margin-top: 6px;
+}
+
+.lesson-support-note {
+  margin: 0;
+  color: #4c5a63;
+  font-size: 0.94rem;
+}
+
+.free-play-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .level-tips ul {
@@ -458,6 +641,39 @@ button:disabled {
   margin: 0 0 8px;
 }
 
+.tutorial-visuals {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tutorial-visual-item {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(247, 243, 230, 0.9);
+  border: 1px solid rgba(36, 64, 74, 0.1);
+}
+
+.tutorial-visual-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.tutorial-visual-label {
+  font-weight: 700;
+}
+
+.tutorial-visual-description {
+  display: block;
+  margin-top: 2px;
+  color: #4c5a63;
+  font-size: 0.92rem;
+}
+
 .tutorial-step-count {
   margin: 0 0 8px;
   font-size: 0.9rem;
@@ -542,13 +758,13 @@ button:disabled {
 
 @media (max-width: 900px) {
   #game-container {
-    flex-direction: column;
-    align-items: center;
+    grid-template-columns: 1fr;
+    justify-items: center;
   }
 
+  #lesson-region,
   #blockly-region {
     width: min(720px, 92%);
-    margin-top: 12px;
   }
 
   #simulation-region {
@@ -558,6 +774,11 @@ button:disabled {
 
   #instructions {
     width: min(600px, 92vw);
+  }
+
+  #blocklyDiv {
+    min-height: 320px;
+    height: min(52vh, 460px);
   }
 
   .tutorial-card,
@@ -570,5 +791,11 @@ button:disabled {
 
   .tutorial-demo-blockly {
     height: 180px;
+  }
+}
+
+@media (min-width: 1280px) {
+  #game-container {
+    grid-template-columns: minmax(580px, 1.45fr) minmax(290px, 0.78fr) minmax(360px, 0.92fr);
   }
 }

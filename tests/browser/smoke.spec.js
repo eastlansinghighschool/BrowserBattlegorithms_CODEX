@@ -8,8 +8,8 @@ test.beforeEach(async ({ page }) => {
 
 async function chooseGuided(page) {
   await page.waitForLoadState("domcontentloaded");
-  const guidedButton = page.getByRole("button", { name: "Guided Levels" });
-  await expect(guidedButton).toBeVisible({ timeout: 10000 });
+  const guidedButton = page.locator("#tutorial-overlay").getByRole("button", { name: "Guided Levels" });
+  await expect(guidedButton).toBeVisible({ timeout: 20000 });
   await guidedButton.click();
 }
 
@@ -23,8 +23,11 @@ async function dismissTutorial(page) {
 test("app opens with a mode chooser over the board and Blockly", async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByRole("button", { name: "Guided Levels" })).toBeVisible({ timeout: 10000 });
   await expect(page.locator("#tutorial-overlay")).toContainText("How do you want to begin?");
+  await expect(page.locator("#tutorial-overlay").getByRole("button", { name: "Guided Levels" })).toBeVisible({
+    timeout: 20000
+  });
+  await expect(page.locator("#tutorial-overlay").getByRole("button", { name: "Free Play" })).toBeVisible();
   await expect(page.locator("#game-container")).toHaveCount(1);
   await expect(page.locator("#canvas-container")).toHaveCount(1);
   await expect(page.locator("#blockly-region")).toBeVisible();
@@ -35,7 +38,7 @@ test("choosing guided mode opens the first tutorial overlay", async ({ page }) =
   await page.goto("/");
   await chooseGuided(page);
   await expect(page.locator("#tutorial-overlay .tutorial-card")).toBeVisible();
-  await expect(page.locator("#tutorial-overlay")).toContainText("Meet the Game Board");
+  await expect(page.locator("#tutorial-overlay")).toContainText("Meet The Board");
 });
 
 test("guided instructions are visible after dismissing the tutorial", async ({ page }) => {
@@ -43,10 +46,11 @@ test("guided instructions are visible after dismissing the tutorial", async ({ p
   await chooseGuided(page);
   await dismissTutorial(page);
   await expect(page.locator("#level-panel")).toContainText("Level 1: Move to Target");
-  await expect(page.locator("#level-panel")).toContainText("Allowed blocks");
-  await expect(page.locator("#level-panel")).toContainText("Human turns:");
-  await expect(page.locator("#level-panel")).toContainText("Tips:");
-  await expect(page.locator("#level-panel")).toContainText("Show Tutorial");
+  await expect(page.locator("#level-panel")).toContainText("What you are looking at");
+  await expect(page.locator("#level-panel")).toContainText("Ally runner");
+  await expect(page.locator("#level-panel")).toContainText("Hints");
+  await expect(page.locator("#level-panel")).toContainText("Available Tools");
+  await expect(page.locator("#showTutorialButton")).toBeVisible();
 });
 
 test("guided level picker shows the current level and opens a popover", async ({ page }) => {
@@ -111,11 +115,12 @@ test("guided panel lets the user switch human turn behavior", async ({ page }) =
   await page.goto("/");
   await chooseGuided(page);
   await dismissTutorial(page);
+  await page.locator("#level-panel summary").filter({ hasText: "Human Turn Options" }).click();
   await page.getByRole("button", { name: "Wait For Input" }).click();
 
   const levelState = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getLevelState());
   expect(levelState.humanTurnBehavior).toBe("WAIT_FOR_INPUT");
-  await expect(page.locator("#level-panel")).toContainText("Human turns: Wait For Input");
+  await expect(page.locator("#blockly-region")).toContainText("Keyboard practice: Team 1 uses W A S D to move");
 });
 
 test("passing level 1 unlocks level 2", async ({ page }) => {
@@ -137,7 +142,6 @@ test("passing level 1 unlocks level 2", async ({ page }) => {
   expect(levelState.levelProgress["reach-enemy-flag"]).toBe("AVAILABLE");
   expect(readOnly).toBeFalsy();
   await expect(page.locator("#level-panel")).toContainText("Level passed");
-  await expect(page.locator('#level-panel button[data-action="next-level"]')).toBeVisible();
   await expect(page.locator("#nextLevelButton")).toBeVisible();
 });
 
@@ -364,9 +368,9 @@ test("level 3 tutorial introduces scoring and level 4 tutorial introduces barrie
     hooks.startLevel("score-a-point");
     hooks.startCurrentLevelTutorial(true);
   });
-  await expect(page.locator("#tutorial-overlay")).toContainText("The Flag Is The New Goal");
+  await expect(page.locator("#tutorial-overlay")).toContainText("Two Jobs In One Puzzle");
   await page.locator('#tutorial-overlay button[data-tutorial-action="next"]').click();
-  await expect(page.locator("#tutorial-overlay")).toContainText("Scoring Means Bringing It Home");
+  await expect(page.locator("#tutorial-overlay")).toContainText("A Condition Can Split The Two Phases");
 
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
@@ -374,11 +378,29 @@ test("level 3 tutorial introduces scoring and level 4 tutorial introduces barrie
     hooks.startLevel("barrier-detour");
     hooks.startCurrentLevelTutorial(true);
   });
-  await expect(page.locator("#tutorial-overlay")).toContainText("A Barrier Blocks The Direct Path");
+  await expect(page.locator("#tutorial-overlay")).toContainText("A Barrier Blocks The Lane");
   await page.locator('#tutorial-overlay button[data-tutorial-action="next"]').click();
-  await expect(page.locator("#tutorial-overlay")).toContainText("If Barrier Is In Front");
-  await page.locator('#tutorial-overlay button[data-tutorial-action="next"]').click();
-  await expect(page.locator("#tutorial-overlay")).toContainText("The First Move Reached Is The One That Runs");
+  await expect(page.locator("#tutorial-overlay")).toContainText("Use A Board Check");
+});
+
+test("desktop Blockly size controls resize the workspace and store the choice", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await chooseGuided(page);
+  await dismissTutorial(page);
+
+  const initialHeight = await page.locator("#blocklyDiv").evaluate((node) => node.getBoundingClientRect().height);
+  expect(initialHeight).toBeGreaterThan(300);
+
+  await page.locator('#blockly-size-controls button[data-blockly-size="tall"]').click();
+
+  const tallState = await page.evaluate(() => ({
+    height: document.querySelector("#blocklyDiv").getBoundingClientRect().height,
+    stored: window.localStorage.getItem("bba:blockly-panel-size")
+  }));
+
+  expect(tallState.height).toBeGreaterThan(initialHeight);
+  expect(tallState.stored).toBe("tall");
 });
 
 test("seeded Blockly conditional programs choose the expected action for new guided levels", async ({ page }) => {

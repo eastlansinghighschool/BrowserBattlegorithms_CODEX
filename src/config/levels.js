@@ -429,12 +429,17 @@ const LEVEL_DEFINITIONS = [
   {
     id: "move-to-target",
     title: "Level 1: Move to Target",
-    description: "Program the ally runner to reach the highlighted target cell.",
-    introText: "This first level is a safe practice space. The enemy runners are frozen on purpose so you can focus on programming your ally.",
+    description: "Guide your ally runner to the highlighted target square.",
+    introText: "This first level is a quiet practice board. Your Blockly code controls the ally runner, and the other runners stay still so you can focus on one simple goal.",
+    legendItems: [
+      { emoji: "🏃🏿‍♂️", label: "Ally runner", description: "This is the runner your Blockly program controls." },
+      { emoji: "🏃", label: "Enemy runner", description: "These runners belong to the other team." },
+      { emoji: "⭕", label: "Target square", description: "Reach this highlighted square to clear the level." }
+    ],
     tips: [
-      "Only the ally runner needs to finish the challenge.",
-      "The highlighted square shows the goal cell.",
-      "Your program runs every time the ally gets a turn."
+      "Only the ally runner needs to reach the target.",
+      "Your program runs each time the ally gets a turn.",
+      "If you ever want the lesson again, use Show Tutorial."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -453,27 +458,26 @@ const LEVEL_DEFINITIONS = [
     tutorialSteps: [
       {
         id: "level-1-board",
-        title: "Meet the Game Board",
-        body: "This grid is where the match happens. Your ally starts on the left, and the highlighted square shows the goal for this challenge.",
-        targetSelector: "#canvas-container"
+        title: "Meet The Board",
+        body: "The board is a grid of spaces. Your ally runner starts on the left, the enemy runners are on the right, and the highlighted square is today’s goal.",
+        targetSelector: "#canvas-container",
+        visualItems: [
+          { emoji: "🏃🏿‍♂️", label: "Ally runner", description: "Your code will decide what this runner does." },
+          { emoji: "🏃", label: "Enemy runners", description: "They are here as board pieces, but they will not move in this first lesson." },
+          { emoji: "⭕", label: "Target", description: "Reach this square to pass." }
+        ]
       },
       {
-        id: "level-1-frozen-enemies",
-        title: "Why Are The Enemies Frozen?",
-        body: "These enemy runners are intentionally frozen so you can practice programming without pressure. They are teaching props in this level.",
+        id: "level-1-frozen",
+        title: "Frozen Means Staying Still",
+        body: "In this lesson, the enemy runners are frozen. That simply means they will not move while you practice the basics.",
         targetSelector: "#canvas-container"
       },
       {
         id: "level-1-event",
-        title: "Programs Start With On Each Turn",
-        body: "Every ally program begins with the On Each Turn block. Put the move you want underneath it so the ally knows what to do each time it gets a turn.",
+        title: "Start With On Each Turn",
+        body: "Every ally program begins with the On Each Turn block. Add one move underneath it so the ally knows what to do every turn.",
         targetSelector: "#blockly-region"
-      },
-      {
-        id: "level-1-show-tutorial",
-        title: "Need A Reminder Later?",
-        body: "You can reopen these teaching steps any time by pressing Show Tutorial here.",
-        targetSelector: "[data-action=\"replay-tutorial\"]"
       }
     ],
     setupOverrides: {
@@ -490,12 +494,12 @@ const LEVEL_DEFINITIONS = [
   {
     id: "reach-enemy-flag",
     title: "Level 2: Reach Enemy Flag",
-    description: "Expand the program so the ally reaches the enemy flag cell on the far side of the map.",
-    introText: "This level introduces a new goal and a new block. You can now use Move Backward if your ally needs to correct its path.",
+    description: "Reach the enemy flag on the far side of the board.",
+    introText: "The goal is different now. Instead of a practice target square, your ally is trying to reach the enemy flag.",
     tips: [
-      "The flag on the far side is now the target.",
-      "Move Backward is newly available in this level.",
-      "Only the first action under On Each Turn runs for now."
+      "A flag marks each team’s side of the field.",
+      "Move Backward is available now if you want to correct a path.",
+      "You still only get one action from the program each ally turn."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -514,13 +518,17 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-2-goal",
         title: "New Goal: Reach The Enemy Flag",
-        body: "This time the ally must reach the enemy flag on the right side of the board instead of a practice target square.",
-        targetSelector: "#canvas-container"
+        body: "This time the goal is the enemy flag on the right side of the board instead of a practice target square.",
+        targetSelector: "#canvas-container",
+        visualItems: [
+          { emoji: "🚩", label: "Your team flag", description: "This flag marks your home side." },
+          { emoji: "🏳️", label: "Enemy flag", description: "Reach this flag to clear the level." }
+        ]
       },
       {
         id: "level-2-new-block",
-        title: "New Blockly Tool",
-        body: "Move Backward is now available. That lets you recover if your ally overshoots or needs to step back into position.",
+        title: "A New Move Is Available",
+        body: "Move Backward is now in the toolbox. You may not need it here, but it is ready if your ally needs to step back into position.",
         targetSelector: "#blockly-region"
       }
     ],
@@ -538,13 +546,16 @@ const LEVEL_DEFINITIONS = [
   {
     id: "score-a-point",
     title: "Level 3: Score a Point",
-    description: "Bring the enemy flag back to your home base so your team scores.",
-    introText: "Now the ally needs two different ideas: go get the flag, then head home once it has it.",
+    description: "Bring the enemy flag back home to score a point.",
+    introText: "This puzzle has two phases: first go get the enemy flag, then bring it back to your own side.",
+    legendItems: [
+      { emoji: "🏳️", label: "Enemy flag", description: "Pick up the enemy flag first." },
+      { emoji: "🚩", label: "Home side", description: "Bring the enemy flag back here to score." }
+    ],
     tips: [
-      "The ally scores by carrying the enemy flag back into the blue home area.",
-      "You can use either If I Have Enemy Flag or the new else version to switch plans after pickup.",
-      "Only the first move the ally reaches each turn is the one it will perform.",
-      "The practice enemies are still frozen so you can focus on the scoring idea."
+      "Scoring happens when your ally returns with the enemy flag.",
+      "Think about how the ally should behave before pickup and after pickup.",
+      "The enemy runners are still frozen so the challenge stays focused on scoring."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -567,30 +578,18 @@ const LEVEL_DEFINITIONS = [
     tutorialSteps: [
       {
         id: "level-3-flag",
-        title: "The Flag Is The New Goal",
-        body: "This time, reaching the enemy flag is only the first half of the job. Your ally has to bring it all the way back home.",
-        targetSelector: "#canvas-container"
-      },
-      {
-        id: "level-3-score",
-        title: "Scoring Means Bringing It Home",
-        body: "A point is scored when the ally carries the enemy flag back into the blue home area on the left side.",
+        title: "Two Jobs In One Puzzle",
+        body: "Reaching the enemy flag is only the first half of the job. Your ally then has to carry it all the way back home.",
         targetSelector: "#canvas-container"
       },
       {
         id: "level-3-condition",
-        title: "New Blockly Tool: If I Have Enemy Flag",
-        body: "This level adds two versions of the flag check. You can use the simple If block, or the else version to choose one move before pickup and another after pickup.",
+        title: "A Condition Can Split The Two Phases",
+        body: "The new flag check can help the ally change plans once it is carrying the enemy flag. Try to make the program notice when the job changes.",
         targetSelector: "#blockly-region",
         demoBlocklyXml: SCORE_SWITCH_DEMO_XML,
-        demoTitle: "Example flag switch",
-        demoCaption: "Before pickup, move out toward the flag. After pickup, switch to the homeward move."
-      },
-      {
-        id: "level-3-first-action",
-        title: "Only The First Move Runs",
-        body: "Each ally turn, the game follows your blocks until it reaches the first move to perform. That means a smart setup can work with either If or the else version.",
-        targetSelector: "#blockly-region"
+        demoTitle: "Pattern preview",
+        demoCaption: "One branch handles the trip out, and another handles the trip home."
       }
     ],
     setupOverrides: {
@@ -607,12 +606,14 @@ const LEVEL_DEFINITIONS = [
   {
     id: "barrier-detour",
     title: "Level 4: Barrier Detour",
-    description: "Use a condition so the ally reacts when a barrier blocks the path ahead.",
-    introText: "The direct lane is blocked now. Your ally needs a backup move when the way forward is not clear.",
+    description: "Notice the obstacle ahead and choose a detour.",
+    introText: "The direct lane is blocked. This is the first time the ally needs to look at the board and react instead of repeating the same move forever.",
+    legendItems: [
+      { emoji: "🚧", label: "Barrier", description: "This obstacle blocks the lane directly ahead." }
+    ],
     tips: [
       "The obstacle in front of the ally is intentional.",
-      "You can use either If Barrier Is In Front or the new else version.",
-      "This level is about choosing between a detour move and a normal forward move.",
+      "Think about what should happen when the path is blocked and when it is clear.",
       "You still only get one action each ally turn."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
@@ -636,24 +637,21 @@ const LEVEL_DEFINITIONS = [
     tutorialSteps: [
       {
         id: "level-4-barrier",
-        title: "A Barrier Blocks The Direct Path",
-        body: "The ally cannot keep moving straight ahead this time. It needs to notice the obstacle and choose another move.",
-        targetSelector: "#canvas-container"
+        title: "A Barrier Blocks The Lane",
+        body: "Straight ahead no longer works. The ally needs to notice the obstacle and choose another move.",
+        targetSelector: "#canvas-container",
+        visualItems: [
+          { emoji: "🚧", label: "Barrier", description: "A barrier blocks movement through that square." }
+        ]
       },
       {
         id: "level-4-condition",
-        title: "New Blockly Tool: If Barrier Is In Front",
-        body: "This level adds two versions of the barrier check. You can use the simple If block, or the else version to choose a detour move when blocked and a forward move when clear.",
+        title: "Use A Board Check",
+        body: "The new barrier condition lets your program ask whether the path ahead is blocked. That helps the ally decide when it should detour.",
         targetSelector: "#blockly-region",
         demoBlocklyXml: BARRIER_DETOUR_DEMO_XML,
-        demoTitle: "Example detour program",
-        demoCaption: "When the path ahead is blocked, this program dips down. Otherwise it keeps moving forward."
-      },
-      {
-        id: "level-4-first-action",
-        title: "The First Move Reached Is The One That Runs",
-        body: "Each turn, the ally follows your blocks until it reaches the first move to perform. The else version can make that choice easier to see.",
-        targetSelector: "#blockly-region"
+        demoTitle: "Pattern preview",
+        demoCaption: "This pattern separates the blocked case from the clear case without spelling out the whole puzzle solution."
       }
     ],
     setupOverrides: {
@@ -673,12 +671,12 @@ const LEVEL_DEFINITIONS = [
   {
     id: "mirror-forward",
     title: "Level 5: Forward Works Both Ways",
-    description: "Use the same Move Forward idea even when the ally starts on the opposite side of the board.",
-    introText: "Forward does not mean right on the screen. Forward means toward this runner's goal direction.",
+    description: "See that Move Forward follows the runner’s own direction, not the screen.",
+    introText: "Forward does not always mean right on the screen. It means moving toward that runner’s goal direction.",
     tips: [
       "The ally starts on the right this time.",
-      "Move Forward still means toward the runner's forward direction.",
-      "This level teaches the playDirection idea before the new sensing blocks."
+      "Watch the runner, not the screen, to understand what forward means.",
+      "This level teaches relative direction before the sensing lessons begin."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -723,11 +721,11 @@ const LEVEL_DEFINITIONS = [
     id: "sensor-barrier-branch",
     title: "Level 6: Barrier Sensor Branch",
     description: "Use the new generic sensor block to check for a barrier directly in front.",
-    introText: "Now the sensing system becomes more flexible. The same block shape can check different objects and different relations.",
+    introText: "The sensing system becomes more flexible here. One sensor block shape can ask about different board objects.",
     tips: [
-      "In this level, the sensor block is only set up for barriers directly in front.",
-      "You can use either the simple sensor If block or the else version.",
-      "This is the first step toward a more flexible sensing language."
+      "In this lesson, the generic sensor is focused on barriers directly in front.",
+      "The puzzle is still about choosing between blocked and clear paths.",
+      "Later levels will widen the same sensor block to more objects."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -782,7 +780,7 @@ const LEVEL_DEFINITIONS = [
     description: "Use the generic sensor to detect an edge or wall and steer around it.",
     introText: "The same sensor family can notice map walls too, not just placed barriers.",
     tips: [
-      "Edge or wall is a single beginner-friendly sensing target in this phase.",
+      "Edge or wall is a beginner-friendly sensing target in this phase.",
       "This map uses real wall cells instead of a temporary barrier.",
       "You still only get one move each ally turn."
     ],
@@ -831,12 +829,12 @@ const LEVEL_DEFINITIONS = [
     id: "find-the-human",
     title: "Level 8: Find the Human",
     description: "Use directional sensing to move the ally toward the human runner.",
-    introText: "Now the sensor can describe where a target is anywhere on the board, not just one square away.",
+    introText: "Now the sensor can describe where something is on the board, not just whether it is immediately in front.",
     tips: [
       "Use the human runner as the sensed object.",
       "The highlighted support square next to the human is the goal, not the occupied human cell.",
-      "Anywhere forward and anywhere above are especially helpful here.",
-      "This is a good level for chaining several sensor checks in order."
+      "Think about how you would describe the human’s position from the ally’s point of view.",
+      "You may need more than one check to guide the ally to the support square."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -900,7 +898,7 @@ const LEVEL_DEFINITIONS = [
     tips: [
       "This time the target is the enemy flag instead of the human runner.",
       "The relation dropdown still describes the flag's position relative to the ally.",
-      "Notice how the same block shape can work on different objects."
+      "Notice how the same sensor idea can shift from runners to goals."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -959,7 +957,7 @@ const LEVEL_DEFINITIONS = [
       "Use W A S D to move the human runner on screen.",
       "Press J or F to jump, B to place a barrier, and X to stay still.",
       "The goal only counts after you have used at least one special action first.",
-      "Blockly still exists beside the board, but this lesson is teaching direct player control."
+      "Blockly stays on screen, but this lesson is about direct player control."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -1068,11 +1066,11 @@ const LEVEL_DEFINITIONS = [
   {
     id: "bring-it-home",
     title: "Level 12: Bring It Home",
-    description: "Combine Move Toward with the flag condition so the ally goes out for the flag and then brings it back.",
-    introText: "Now the helper block gets two jobs: chase the enemy flag first, then chase your home base after pickup.",
+    description: "Use Move Toward for the trip out and the trip back.",
+    introText: "The helper block now has two jobs: head toward the enemy flag first, then turn back toward home after pickup.",
     tips: [
-      "Use If I Have Enemy Flag with else to switch the target.",
-      "Move Toward enemy flag works on the way out, even when the helper needs both horizontal and vertical steps.",
+      "Think about how the target should change after pickup.",
+      "Move Toward enemy flag works on the way out, even when the route needs both horizontal and vertical steps.",
       "Move Toward my base works on the way home."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
@@ -1133,7 +1131,7 @@ const LEVEL_DEFINITIONS = [
     introText: "Distance sensors use ideal move count, not line-of-sight. That means the game measures how many grid steps away something is.",
     tips: [
       "Within 2 spaces and within 3 spaces use Manhattan distance.",
-      "A clean beginner solution is: dodge up when the enemy is nearby, otherwise keep advancing.",
+      "Try giving the ally one response for danger and another response for normal progress.",
       "This level is easier if you think about ideal grid moves, not straight-line distance.",
       "The enemy is frozen so you can focus on the new sensing idea."
     ],
@@ -1190,7 +1188,7 @@ const LEVEL_DEFINITIONS = [
       "Jump Forward only goes forward.",
       "There is no backward jump in this game.",
       "The landing space still needs to be open.",
-      "Because Blockly only performs the first action it reaches, this level works best with a very short program."
+      "This level is about noticing what one jump can do, not writing a long program."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -1250,7 +1248,7 @@ const LEVEL_DEFINITIONS = [
     description: "Use a condition so the ally jumps once and then switches back to normal movement.",
     introText: "Conditions can check the runner's resources too. In this level, the ally should jump when it can and walk after the jump has been spent.",
     tips: [
-      "Use If I Can Jump with else for the clearest version of this idea.",
+      "Think about what should happen before the jump is spent and after it is gone.",
       "After the jump is used, the condition changes and the else move takes over.",
       "This is your first resource-aware Blockly lesson."
     ],
@@ -1521,10 +1519,10 @@ const LEVEL_DEFINITIONS = [
     id: "freeze-the-lane",
     title: "Level 20: Freeze the Lane",
     description: "Spend Area Freeze once, then let the ally keep moving toward the flag while the lane is safe.",
-    introText: "Area Freeze is a team power, not a normal move. In this level, use it once while it is ready, then switch back to Move Toward so the ally keeps advancing.",
+    introText: "Area Freeze is a team power, not a normal move. This puzzle is about spending it at the right time and then returning to the main plan.",
     tips: [
       "Area Freeze affects nearby active enemies.",
-      "If Area Freeze Is Ready can help you decide when that one-time power is still available.",
+      "Think about what the ally should do before the freeze is spent and what it should do afterward.",
       "After this level, free play is the best place to combine all the tools you have learned."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
@@ -1595,7 +1593,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 8 },
     tutorialSteps: [
       { id: "level-21-target", title: "A New Move Toward Target", body: "Closest enemy picks the nearest active opponent and steps toward them.", targetSelector: "#blockly-region" },
-      { id: "level-21-board", title: "Intercept The Runner", body: "This challenge is about chasing a threat, not chasing a flag. A straight forward march will miss the intercept.", targetSelector: "#canvas-container" }
+      { id: "level-21-board", title: "Intercept The Runner", body: "This challenge is about chasing a threat, not chasing a flag. Watch how the target sits off the main lane.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1621,7 +1619,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 6 },
     tutorialSteps: [
       { id: "level-22-distance", title: "Distance Is A Number Now", body: "Distance to closest enemy can be compared with <, <=, >, and the other operator choices.", targetSelector: "#blockly-region" },
-      { id: "level-22-compare", title: "Choose A Move By Range", body: "This level wants a range check that turns upward when the threat gets close enough.", targetSelector: "#canvas-container" }
+      { id: "level-22-compare", title: "Choose A Move By Range", body: "Try using the distance value to decide when the ally should break off and turn upward.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1751,7 +1749,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 16 },
     tutorialSteps: [
       { id: "level-27-shared-program", title: "One Workspace, Two Allies", body: "Both allies run the same blocks. Runner index is how the program can tell them apart.", targetSelector: "#blockly-region" },
-      { id: "level-27-index", title: "Index 0 And Index 1", body: "In this level, runner 0 should move toward the flag while runner 1 stays out of the lane. If both go, the wrong ally gets there first.", targetSelector: "#canvas-container" }
+      { id: "level-27-index", title: "Index 0 And Index 1", body: "Only one ally should take the scoring job here. The other ally needs to stay clear of the lane.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1778,7 +1776,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 10 },
     tutorialSteps: [
       { id: "level-28-index-compare", title: "Compare The Index", body: "You can compare runner index to a number to choose different branches for different allies.", targetSelector: "#blockly-region" },
-      { id: "level-28-jobs", title: "Attacker And Patrol", body: "This level has one true attacker. The other ally should patrol upward so the wrong runner does not reach the flag first.", targetSelector: "#canvas-container" }
+      { id: "level-28-jobs", title: "Attacker And Patrol", body: "One ally should take the flag route while the other peels upward into a support lane.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1804,7 +1802,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 6 },
     tutorialSteps: [
       { id: "level-29-range", title: "Index Ranges Create Teams", body: "Index < 2 can group the first two allies together while index 2 takes a separate job.", targetSelector: "#blockly-region" },
-      { id: "level-29-three-allies", title: "Three Allies, One Program", body: "The first two allies are parked in the lane. Move them up together so runner 2 can advance to the target.", targetSelector: "#canvas-container" }
+      { id: "level-29-three-allies", title: "Three Allies, One Program", body: "Two allies need to clear space so the third runner can finish the puzzle.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1858,7 +1856,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 14 },
     tutorialSteps: [
       { id: "level-31-split", title: "Split The Team Jobs", body: "Use runner index to make the first ally attack and the second react to the closest enemy.", targetSelector: "#blockly-region" },
-      { id: "level-31-pressure", title: "Defend Your Side First", body: "The enemies are already on your half of the map. The defender should react there while the attacker keeps the scoring plan moving.", targetSelector: "#canvas-container" }
+      { id: "level-31-pressure", title: "Defend Your Side First", body: "The defender’s job starts on your side of the field while the attacker keeps advancing.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1911,7 +1909,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 3 },
     tutorialSteps: [
       { id: "level-33-index-barrier", title: "Only One Ally Should Place", body: "Use runner index together with barrier readiness so one ally becomes the barrier specialist while the attacker keeps advancing.", targetSelector: "#blockly-region" },
-      { id: "level-33-cell", title: "Build The Support Wall", body: "The barrier goes on the lower lane while the tracked attacker reaches the highlighted square above it.", targetSelector: "#canvas-container" }
+      { id: "level-33-cell", title: "Build The Support Wall", body: "The support barrier matters here only if it helps the tracked attacker finish on time.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1936,7 +1934,7 @@ const LEVEL_DEFINITIONS = [
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 3 },
     tutorialSteps: [
       { id: "level-34-jump-role", title: "Give The Jump To One Ally", body: "Index can decide which ally gets the jump path and which ally avoids the obstacle.", targetSelector: "#blockly-region" },
-      { id: "level-34-wall", title: "One Dramatic Leap", body: "The wall blocks the lane, so the lead ally needs one good jump and then one more normal move to finish.", targetSelector: "#canvas-container" }
+      { id: "level-34-wall", title: "One Dramatic Leap", body: "Only one ally should take the jump route. The second ally needs a different role.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -1966,8 +1964,8 @@ const LEVEL_DEFINITIONS = [
     winCondition: { type: "team_scores_point", teamId: 1, runnerId: "runner_1_AI_AllyP1" },
     failureCondition: { type: "turn_limit_exceeded", maxTurns: 32 },
     tutorialSteps: [
-      { id: "level-35-capstone", title: "A Full Team Script", body: "This final level expects one shared program to divide attacking, defending, and support jobs across three allies.", targetSelector: "#blockly-region" },
-      { id: "level-35-real-score", title: "Score For Real", body: "This time the level only passes when your team actually scores a point.", targetSelector: "#canvas-container" }
+      { id: "level-35-capstone", title: "A Full Team Script", body: "This final level is a real scrimmage. One shared program has to divide attacking, defending, and support work across the team.", targetSelector: "#blockly-region" },
+      { id: "level-35-real-score", title: "Score For Real", body: "The capstone only passes when your team actually scores a point in live play.", targetSelector: "#canvas-container" }
     ],
     setup: {
       pointsToWin: 1,
@@ -2029,6 +2027,7 @@ export function getLevelDefinitions() {
     sensorRelationTypes: [...(level.sensorRelationTypes || [])],
     moveTowardTargetTypes: [...(level.moveTowardTargetTypes || [])],
     tips: [...(level.tips || [])],
+    legendItems: structuredClone(level.legendItems || []),
     tutorialSteps: structuredClone(level.tutorialSteps || []),
     winCondition: { ...level.winCondition },
     failureCondition: level.failureCondition ? { ...level.failureCondition } : null,

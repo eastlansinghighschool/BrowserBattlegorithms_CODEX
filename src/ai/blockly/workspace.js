@@ -30,6 +30,12 @@ const IGNORED_BLOCK_REASON = "bba_ignored_block";
 const GUIDED_WORKSPACE_STORAGE_PREFIX = "bba:guided-workspace:";
 const FREE_PLAY_WORKSPACE_STORAGE_KEY = "bba:free-play-workspace";
 const FREE_PLAY_PVP_WORKSPACE_STORAGE_PREFIX = "bba:free-play-pvp-team:";
+const BLOCKLY_PANEL_SIZE_STORAGE_KEY = "bba:blockly-panel-size";
+const BLOCKLY_PANEL_SIZES = {
+  compact: 340,
+  standard: 420,
+  tall: 560
+};
 
 function buildToolboxXml(blockTypes) {
   const blockLibrary = getBlockLibrary();
@@ -67,6 +73,34 @@ function getEventBlock(workspace) {
   return workspace.getBlocksByType(BLOCK_TYPES.ON_EACH_TURN, false)[0] || null;
 }
 
+function getStoredBlocklyPanelSize() {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return "standard";
+  }
+  const storedValue = window.localStorage.getItem(BLOCKLY_PANEL_SIZE_STORAGE_KEY);
+  return Object.hasOwn(BLOCKLY_PANEL_SIZES, storedValue) ? storedValue : "standard";
+}
+
+function applyBlocklyPanelSize(app) {
+  const blocklyDiv = document.getElementById("blocklyDiv");
+  if (!blocklyDiv) {
+    return;
+  }
+
+  const viewportIsCompact = window.innerWidth <= 900;
+  if (viewportIsCompact) {
+    blocklyDiv.style.removeProperty("height");
+  } else {
+    const selectedSize = app.state.blocklyPanelSize || "standard";
+    const selectedHeight = BLOCKLY_PANEL_SIZES[selectedSize] || BLOCKLY_PANEL_SIZES.standard;
+    blocklyDiv.style.height = `${selectedHeight}px`;
+  }
+
+  if (app.blocklyWorkspace) {
+    Blockly.svgResize(app.blocklyWorkspace);
+  }
+}
+
 function getFreePlayProgramKey(teamId) {
   return Number(teamId) === 2 ? "team2" : "team1";
 }
@@ -86,6 +120,23 @@ export function getActiveBlocklyProgramLabel(app) {
     return `Team ${app.state.activeBlocklyTeamTab || 1}`;
   }
   return "Player Team";
+}
+
+export function initializeBlocklyPanelSize(app) {
+  app.state.blocklyPanelSize = getStoredBlocklyPanelSize();
+  applyBlocklyPanelSize(app);
+  window.addEventListener("resize", () => {
+    applyBlocklyPanelSize(app);
+  });
+}
+
+export function setBlocklyPanelSize(app, size) {
+  const nextSize = Object.hasOwn(BLOCKLY_PANEL_SIZES, size) ? size : "standard";
+  app.state.blocklyPanelSize = nextSize;
+  if (typeof window !== "undefined" && window.localStorage) {
+    window.localStorage.setItem(BLOCKLY_PANEL_SIZE_STORAGE_KEY, nextSize);
+  }
+  applyBlocklyPanelSize(app);
 }
 
 function getWorkspaceStorageKey(app, overrideTeamId = null) {
@@ -487,6 +538,7 @@ export function initBlockly(app) {
     scrollbars: true,
     trashcan: true
   });
+  applyBlocklyPanelSize(app);
   loadWorkspaceXml(app, "");
   app.blocklyWorkspace.addChangeListener(() => {
     updateBlocklyExecutionHints(app);
