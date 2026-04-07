@@ -42,10 +42,13 @@ jobs:
       - name: Run unit tests
         run: npm test
 
-      - name: Run browser tests
+      - name: Build production site for test preview
+        run: npm run build
+
+      - name: Run browser tests against preview build
         run: npm run test:browser
 
-      - name: Build production site
+      - name: Build production site for GitHub Pages
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run build
