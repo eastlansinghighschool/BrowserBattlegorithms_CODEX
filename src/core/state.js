@@ -64,6 +64,12 @@ export function createInitialState() {
     goalBurstEffect: null,
     soundEnabled: true,
     showModePicker: true,
+    shellReady: false,
+    editorReady: false,
+    boardReady: false,
+    editorLoadError: null,
+    boardLoadError: null,
+    workspaceImportStatus: null,
     randomFn: Math.random,
     runnerActionHistory: {}
   };

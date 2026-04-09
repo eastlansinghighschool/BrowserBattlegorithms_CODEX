@@ -14,6 +14,7 @@ import {
   getSensorObjectLabel,
   getSensorRelationLabel
 } from "../ai/blockly/blocks.js";
+import { renderControlRows } from "./keycaps.js";
 import {
   configureFreePlay,
   enterFreePlay,
@@ -24,6 +25,8 @@ import {
   setGuidedHumanTurnBehavior,
   startLevel
 } from "../core/levels.js";
+
+const LESSON_PANEL_COLLAPSED_STORAGE_KEY = "bba:lesson-panel-collapsed";
 
 function escapeHtml(value) {
   return `${value || ""}`
@@ -53,6 +56,36 @@ function describeGoal(level) {
     return "Carry the enemy flag back home to score a point.";
   }
   return "Complete the challenge.";
+}
+
+function getStoredLessonPanelCollapsed() {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return false;
+  }
+  return window.localStorage.getItem(LESSON_PANEL_COLLAPSED_STORAGE_KEY) === "true";
+}
+
+function shouldUseCollapsedLessonPanel(app) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  if (typeof app.ui.isLessonPanelCollapsed !== "boolean") {
+    app.ui.isLessonPanelCollapsed = getStoredLessonPanelCollapsed();
+  }
+  return window.innerWidth >= 1280 && app.ui.isLessonPanelCollapsed;
+}
+
+function syncLessonPanelShell(app) {
+  const gameContainer = document.getElementById("game-container");
+  const lessonRegion = document.getElementById("lesson-region");
+  const collapsed = shouldUseCollapsedLessonPanel(app);
+  if (gameContainer) {
+    gameContainer.classList.toggle("lesson-panel-collapsed", collapsed);
+  }
+  if (lessonRegion) {
+    lessonRegion.classList.toggle("lesson-region-collapsed", collapsed);
+  }
+  return collapsed;
 }
 
 function getLevelStatusLabel(status) {
@@ -219,14 +252,27 @@ function renderFreePlayOptions(app) {
         <select data-action="free-play-map">${mapOptions}</select>
       </label>
     </div>
-    <p class="student-lesson-goal">Build a sandbox match, then test ideas with humans, Blockly allies, and CPU teams.</p>
+    <p class="student-lesson-goal">Build a sandbox match, then test ideas with humans, program-controlled allies, and CPU teams.</p>
     <p class="lesson-inline-list"><strong>Current setup:</strong> ${escapeHtml(getFreePlayModeLabel(app.state.freePlayMode))} | ${escapeHtml(currentMapLabel)} | ${escapeHtml(`${app.state.freePlayTeamSize} runners per side`)}</p>
-    <p class="lesson-inline-list"><strong>Blockly:</strong> ${escapeHtml(programSummary)}</p>
+    <p class="lesson-inline-list"><strong>Program panel:</strong> ${escapeHtml(programSummary)}</p>
     <details class="lesson-disclosure" open>
       <summary>Controls</summary>
       <div class="lesson-disclosure-content">
-        <p class="lesson-support-note">Team 1 uses WASD to move, J/F to jump, B to place a barrier, and X to stay still.</p>
-        <p class="lesson-support-note">Team 2 uses O K L ; to move, M to jump, I to place a barrier, and . to stay still.</p>
+        <p class="lesson-support-note">Two-player free play uses one keyboard. Each team has its own movement and ability keys.</p>
+        <p><strong>Team 1 Human</strong></p>
+        ${renderControlRows([
+          { label: "Move", keys: ["W", "A", "S", "D"], description: "move on the board" },
+          { label: "Jump", keys: ["F"], description: "jump forward" },
+          { label: "Barrier", keys: ["B"], description: "place a barrier" },
+          { label: "Stay", keys: ["X"], description: "stay still" }
+        ])}
+        <p><strong>Team 2 Human</strong></p>
+        ${renderControlRows([
+          { label: "Move", keys: ["O", "K", "L", ";"], description: "move on the board" },
+          { label: "Jump", keys: ["M"], description: "jump forward" },
+          { label: "Barrier", keys: ["I"], description: "place a barrier" },
+          { label: "Stay", keys: ["."], description: "stay still" }
+        ])}
       </div>
     </details>
   `;
@@ -247,6 +293,11 @@ export function bindLevelPanel(app) {
 
     if (target.dataset.action === "enter-free-play") {
       enterFreePlay(app);
+    } else if (target.dataset.action === "toggle-panel-collapse") {
+      app.ui.isLessonPanelCollapsed = !app.ui.isLessonPanelCollapsed;
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(LESSON_PANEL_COLLAPSED_STORAGE_KEY, String(app.ui.isLessonPanelCollapsed));
+      }
     } else if (target.dataset.action === "enter-guided") {
       enterGuidedMode(app);
     } else if (target.dataset.action === "set-human-auto-skip") {
@@ -306,6 +357,10 @@ export function bindLevelPanel(app) {
       app.syncUi();
     }
   });
+
+  window.addEventListener("resize", () => {
+    app.syncUi();
+  });
 }
 
 export function renderLevelPanel(app) {
@@ -316,16 +371,20 @@ export function renderLevelPanel(app) {
 
   if (app.state.showModePicker) {
     panel.innerHTML = "";
+    syncLessonPanelShell(app);
     return;
   }
 
   const currentLevel = getCurrentLevel(app);
   if (!currentLevel) {
     panel.innerHTML = "";
+    syncLessonPanelShell(app);
     return;
   }
 
   const inGuided = app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS;
+  const canCollapse = typeof window !== "undefined" && window.innerWidth >= 1280;
+  const panelCollapsed = syncLessonPanelShell(app);
   const resultReason = humanizeResultReason(app.state.lastLevelResultReason);
   const successLead = currentLevel.winCondition.type === "team_scores_point"
     ? "Level passed. Scoring a point completed the challenge."
@@ -338,9 +397,14 @@ export function renderLevelPanel(app) {
 
   const pickerOpen = Boolean(app.ui.isLevelPickerOpen);
 
-  panel.innerHTML = `
+  panel.innerHTML = panelCollapsed ? `
+    <div class="lesson-panel-collapse-shell">
+      <button class="lesson-panel-collapse-button" data-action="toggle-panel-collapse" aria-label="Show ${inGuided ? "guided" : "free play"} options">Show Options</button>
+    </div>
+  ` : `
     <div class="level-panel-header">
       <strong>${inGuided ? "Guided Levels" : "Free Play"}</strong>
+      ${canCollapse ? '<button type="button" data-action="toggle-panel-collapse">Hide Options</button>' : ""}
     </div>
     <div class="level-mode-toggle">
       <button data-action="enter-guided" ${inGuided ? "disabled" : ""}>Guided</button>
@@ -367,19 +431,10 @@ export function renderLevelPanel(app) {
         ${renderLegendItems(currentLevel)}
         ${app.state.humanTurnBehavior === HUMAN_TURN_BEHAVIORS.WAIT_FOR_INPUT ? `
           <div class="lesson-alert">
-            This level teaches direct keyboard control. Use the controls shown in the Blockly panel while the human runner is active.
+            This level teaches direct keyboard control. Use the controls shown in the program panel while the human runner is active.
           </div>
         ` : ""}
         ${resultMessage}
-        <div class="level-actions">
-          <button data-action="start-current-level">${
-            app.state.mainGameState === "RUNNING" ||
-            app.state.activeLevelResult === LEVEL_RESULT.PASSED ||
-            app.state.activeLevelResult === LEVEL_RESULT.FAILED
-              ? "Reset Level"
-              : "Start Level"
-            }</button>
-          </div>
         ${(currentLevel.tips || []).length ? `
           <details class="lesson-disclosure">
             <summary>Hints</summary>

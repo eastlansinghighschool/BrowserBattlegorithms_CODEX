@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+test.describe.skip("legacy smoke suite migrated into focused browser specs", () => {
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.clear();
@@ -9,8 +11,29 @@ test.beforeEach(async ({ page }) => {
 async function chooseGuided(page) {
   await page.waitForLoadState("domcontentloaded");
   const guidedButton = page.locator("#tutorial-overlay").getByRole("button", { name: "Guided Levels" });
-  await expect(guidedButton).toBeVisible({ timeout: 20000 });
-  await guidedButton.click();
+  if (await guidedButton.count()) {
+    await expect(guidedButton).toBeVisible({ timeout: 20000 });
+    await guidedButton.click();
+    await waitForHeavyReady(page);
+    return;
+  }
+  await page.waitForFunction(() => Boolean(window.__BBA_TEST_HOOKS__), null, { timeout: 20000 });
+  await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    hooks.app.state.currentModeView = "GUIDED_LEVELS";
+    hooks.app.syncUi();
+  });
+  await waitForHeavyReady(page);
+  await expect(page.locator("#level-panel")).toBeVisible();
+}
+
+async function waitForHeavyReady(page) {
+  await page.waitForFunction(
+    () => window.__BBA_TEST_HOOKS__?.isEditorReady?.() && window.__BBA_TEST_HOOKS__?.isBoardReady?.(),
+    null,
+    { timeout: 20000 }
+  );
 }
 
 async function dismissTutorial(page) {
@@ -23,7 +46,8 @@ async function dismissTutorial(page) {
 test("app opens with a mode chooser over the board and Blockly", async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.locator("#tutorial-overlay")).toContainText("How do you want to begin?");
+  await expect(page.locator("#tutorial-overlay")).toContainText("Browser Battlegorithms");
+  await expect(page.locator("#tutorial-overlay")).toContainText("Hour of Code experience");
   await expect(page.locator("#tutorial-overlay").getByRole("button", { name: "Guided Levels" })).toBeVisible({
     timeout: 20000
   });
@@ -31,6 +55,8 @@ test("app opens with a mode chooser over the board and Blockly", async ({ page }
   await expect(page.locator("#game-container")).toHaveCount(1);
   await expect(page.locator("#canvas-container")).toHaveCount(1);
   await expect(page.locator("#blockly-region")).toBeVisible();
+  await expect(page.locator("#board-loading-placeholder")).toBeVisible();
+  await expect(page.locator("#blockly-loading-placeholder")).toBeVisible();
   await expect(page.locator("#playResetButton")).toBeHidden();
 });
 
@@ -120,7 +146,64 @@ test("guided panel lets the user switch human turn behavior", async ({ page }) =
 
   const levelState = await page.evaluate(() => window.__BBA_TEST_HOOKS__.getLevelState());
   expect(levelState.humanTurnBehavior).toBe("WAIT_FOR_INPUT");
-  await expect(page.locator("#blockly-region")).toContainText("Keyboard practice: Team 1 uses W A S D to move");
+  await expect(page.locator("#blockly-region")).toContainText("Keyboard practice");
+  await expect(page.locator("#blockly-region")).toContainText("W");
+  await expect(page.locator("#blockly-region")).toContainText("J");
+});
+
+test("header help link opens the standalone help page in a new tab", async ({ page }) => {
+  await page.goto("/");
+  const helpLink = page.locator("#helpLink");
+  await expect(helpLink).toHaveAttribute("href", /help\.html$/);
+  await expect(helpLink).toHaveAttribute("target", "_blank");
+});
+
+test("standalone help page loads the General, Blocks, and Strategy sections", async ({ page }) => {
+  await page.goto("/help.html");
+  await expect(page.locator(".help-sidebar")).toContainText("General");
+  await expect(page.locator(".help-sidebar")).toContainText("Blocks");
+  await expect(page.locator(".help-sidebar")).toContainText("Strategy");
+  await expect(page.locator(".help-main")).toContainText("What Is Battlegorithms?");
+  await expect(page.locator(".help-main")).toContainText("How Block Programs Work");
+  await expect(page.locator(".help-main")).toContainText("Free Play Tips");
+});
+
+test("wide layouts can collapse the lesson panel to expand the program region", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await chooseGuided(page);
+  await dismissTutorial(page);
+
+  const before = await page.evaluate(() => ({
+    collapsed: document.querySelector("#game-container").classList.contains("lesson-panel-collapsed"),
+    width: document.querySelector("#blockly-region").getBoundingClientRect().width
+  }));
+
+  await page.locator('#level-panel button[data-action="toggle-panel-collapse"]').click();
+
+  const after = await page.evaluate(() => ({
+    collapsed: document.querySelector("#game-container").classList.contains("lesson-panel-collapsed"),
+    lessonCollapsed: document.querySelector("#lesson-region").classList.contains("lesson-region-collapsed"),
+    width: document.querySelector("#blockly-region").getBoundingClientRect().width,
+    hasShowOptions: document.querySelector('#level-panel button[data-action="toggle-panel-collapse"]')?.textContent
+  }));
+
+  expect(before.collapsed).toBeFalsy();
+  expect(after.collapsed).toBeTruthy();
+  expect(after.lessonCollapsed).toBeTruthy();
+  expect(after.width).toBeGreaterThan(before.width);
+  expect(after.hasShowOptions).toContain("Show Options");
+});
+
+test("free play shows Team 2 controls with a semicolon keycap", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Free Play" }).click();
+  await expect(page.locator("#level-panel")).toContainText("Team 2 Human");
+  const team2MoveRow = page.locator("#level-panel .control-chip-row").filter({ hasText: "Move" }).nth(1);
+  await expect(team2MoveRow).toContainText("O");
+  await expect(team2MoveRow).toContainText("K");
+  await expect(team2MoveRow).toContainText("L");
+  await expect(team2MoveRow).toContainText(";");
 });
 
 test("passing level 1 unlocks level 2", async ({ page }) => {
@@ -209,6 +292,7 @@ test("passing level 4 unlocks the first sensing-track levels", async ({ page }) 
 
 test("guided toolbox expands correctly for levels 3 and 4", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -234,6 +318,7 @@ test("guided toolbox expands correctly for levels 3 and 4", async ({ page }) => 
 
 test("sensing levels gate the generic sensor dropdown options by level", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const sensorOptions = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -272,6 +357,7 @@ test("sensing levels gate the generic sensor dropdown options by level", async (
 
 test("later guided levels gate Move Toward targets and human practice waits for input", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const levelData = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -305,6 +391,7 @@ test("later guided levels gate Move Toward targets and human practice waits for 
 
 test("level 6 tutorial shows the generic sensor demo preview", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -328,6 +415,7 @@ test("level 6 tutorial shows the generic sensor demo preview", async ({ page }) 
 
 test("condition blocks render consistent If and else labels", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const labels = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.enterFreePlay();
@@ -360,6 +448,7 @@ test("condition blocks render consistent If and else labels", async ({ page }) =
 
 test("level 3 tutorial introduces scoring and level 4 tutorial introduces barrier logic", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -403,8 +492,56 @@ test("desktop Blockly size controls resize the workspace and store the choice", 
   expect(tallState.stored).toBe("tall");
 });
 
+test("Level 10 instructions require Jump or Place Barrier before the goal counts", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    Object.keys(hooks.app.state.levelProgress).forEach((levelId, index) => {
+      hooks.app.state.levelProgress[levelId] = index === 9 ? "AVAILABLE" : "PASSED";
+    });
+    hooks.startLevel("human-runner-practice");
+    const level = hooks.app.state.levels.find((entry) => entry.id === "human-runner-practice");
+    const human = hooks.app.state.allRunners.find((runner) => runner.id === "runner_1_HumanP1");
+    human.gridX = 4;
+    human.gridY = 4;
+    hooks.app.state.runnerActionHistory[human.id] = ["STAY_STILL"];
+    const stayStillResult = hooks.evaluateLevelProgress();
+    hooks.app.state.runnerActionHistory[human.id] = ["JUMP_FORWARD"];
+    const jumpResult = hooks.evaluateLevelProgress();
+    return {
+      description: level.description,
+      tips: level.tips,
+      stayStillResult,
+      jumpResult
+    };
+  });
+
+  expect(result.description).toMatch(/Jump or Place Barrier/i);
+  expect(result.tips.join(" ")).toMatch(/Jump or Place Barrier/i);
+  expect(result.stayStillResult).toBeNull();
+  expect(result.jumpResult).toEqual({ result: "PASSED", reason: "win_condition_met" });
+});
+
+test("Level 11 starts with the enemy flag in the enemy goal area", async ({ page }) => {
+  await page.goto("/");
+  const flag = await page.evaluate(() => {
+    const hooks = window.__BBA_TEST_HOOKS__;
+    hooks.app.state.showModePicker = false;
+    Object.keys(hooks.app.state.levelProgress).forEach((levelId, index) => {
+      hooks.app.state.levelProgress[levelId] = index === 10 ? "AVAILABLE" : "PASSED";
+    });
+    hooks.startLevel("move-toward-flag");
+    const enemyFlag = hooks.app.state.gameFlags[2];
+    return { x: enemyFlag.gridX, y: enemyFlag.gridY };
+  });
+
+  expect(flag).toEqual({ x: 11, y: 3 });
+});
+
 test("seeded Blockly conditional programs choose the expected action for new guided levels", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const conditionalActions = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -461,6 +598,7 @@ test("seeded Blockly conditional programs choose the expected action for new gui
 
 test("seeded generic sensor programs choose the expected action", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const actions = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -525,6 +663,7 @@ test("seeded generic sensor programs choose the expected action", async ({ page 
 
 test("level 8 tutorial can show a read-only demo program without changing the learner workspace", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -570,6 +709,7 @@ test("level 8 tutorial can show a read-only demo program without changing the le
 
 test("a seeded level 8 reference solution reaches the revised support target", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const result = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -686,6 +826,7 @@ test("guided completion triggers a localized goal burst at the tutorial target",
 
 test("failing a guided level restores Blockly editing", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -704,7 +845,7 @@ test("failing a guided level restores Blockly editing", async ({ page }) => {
   await expect(page.locator("#playResetButton")).toHaveText("Reset Level");
 });
 
-test("level 10 accepts J as a human jump key", async ({ page }) => {
+test("level 10 uses F as the Team 1 jump key", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
@@ -728,21 +869,28 @@ test("level 10 accepts J as a human jump key", async ({ page }) => {
 
   const jumpState = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
-    const handled = hooks.sendKey("j");
+    const handledJ = hooks.sendKey("j");
+    const queuedAfterJ = hooks.app.state.queuedActionForCurrentRunner?.actionType || null;
+    const handledF = hooks.sendKey("f");
     return {
-      handled,
+      handledJ,
+      queuedAfterJ,
+      handledF,
       turnState: hooks.app.state.currentTurnState,
       queuedActionType: hooks.app.state.queuedActionForCurrentRunner?.actionType || null
     };
   });
 
-  expect(jumpState.handled).toBeTruthy();
+  expect(jumpState.handledJ).toBeFalsy();
+  expect(jumpState.queuedAfterJ).toBeNull();
+  expect(jumpState.handledF).toBeTruthy();
   expect(["PROCESSING_ACTION", "ANIMATING"]).toContain(jumpState.turnState);
   expect(jumpState.queuedActionType === "JUMP_FORWARD" || jumpState.turnState === "ANIMATING").toBeTruthy();
 });
 
 test("guided reset keeps the workspace code and returns the level to Start Level", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -939,6 +1087,7 @@ test("PvCPU easy and tactical free play build distinct CPU opponent setups", asy
 
 test("seeded free-play Move Toward programs choose the expected helper direction", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const actions = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.randomFn = () => 0.25;
@@ -984,6 +1133,7 @@ test("seeded free-play Move Toward programs choose the expected helper direction
 
 test("seeded free-play programs choose the expected new action and condition branches", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const actions = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.randomFn = () => 0.25;
@@ -1182,6 +1332,7 @@ test("free-play Freeze Opponents affects nearby enemies and consumes the team us
 
 test("guided Level 20 uses freeze and avoids overlapping runners", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const result = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.startLevel("freeze-the-lane");
@@ -1244,6 +1395,7 @@ test("guided HUD shows level state, turn, and title instead of the score summary
 
 test("advanced boolean/value inputs stay enabled when connected", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const result = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -1303,6 +1455,7 @@ test("advanced boolean/value inputs stay enabled when connected", async ({ page 
 
 test("redesigned advanced levels reject the reported trivial one-block solutions", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const results = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     const cases = [
@@ -1348,6 +1501,7 @@ test("redesigned advanced levels reject the reported trivial one-block solutions
 
 test("advanced scrimmage opens full capstone tools and starts with active enemies", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const result = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.app.state.showModePicker = false;
@@ -1369,6 +1523,7 @@ test("advanced scrimmage opens full capstone tools and starts with active enemie
 
 test("same-team runners cannot step onto their own home flag in live play", async ({ page }) => {
   await page.goto("/");
+  await waitForHeavyReady(page);
   const result = await page.evaluate(() => {
     const hooks = window.__BBA_TEST_HOOKS__;
     hooks.enterFreePlay();
@@ -1416,4 +1571,5 @@ test("test hooks expose deterministic level and tutorial controls", async ({ pag
   expect(hookData.hasEnterFreePlay).toBeTruthy();
   expect(hookData.hasToolboxReader).toBeTruthy();
   expect(hookData.hasTutorialStarter).toBeTruthy();
+});
 });

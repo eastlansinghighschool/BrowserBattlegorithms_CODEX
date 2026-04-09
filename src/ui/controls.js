@@ -4,22 +4,14 @@ import {
   GAME_VIEW_MODES,
   LEVEL_RESULT,
   MAIN_GAME_STATES,
-  P1_KEY_ALIASES,
   P1_KEY_BINDINGS,
   P2_KEY_BINDINGS
 } from "../config/constants.js";
-import {
-  getActiveBlocklyProgramLabel,
-  getWorkspaceXmlText,
-  importWorkspaceXml,
-  setBlocklyPanelSize,
-  setBlocklyEditable,
-  switchActiveBlocklyTeamTab
-} from "../ai/blockly/workspace.js";
 import { enterFreePlay, goToNextLevel, startLevel, resetCurrentLevel } from "../core/levels.js";
 import { resetGameToSetup, startGame } from "../core/setup.js";
 import { handlePlayerInput } from "../core/turnEngine.js";
 import { playSound, setSoundEnabled } from "./sound.js";
+import { setBlocklyPanelSize } from "./blocklyLayout.js";
 
 export function getAnimationSpeedFactorFromSliderValue(sliderValue) {
   const numericValue = Number.parseInt(sliderValue, 10);
@@ -39,6 +31,8 @@ export function bindControls(app) {
   const soundToggleButton = document.getElementById("soundToggleButton");
   const blocklyProgramTabs = document.getElementById("blockly-program-tabs");
   const blocklySizeControls = document.getElementById("blockly-size-controls");
+  const boardRetryButton = document.getElementById("board-loading-retry");
+  const blocklyRetryButton = document.getElementById("blockly-loading-retry");
   if (speedSlider && speedValueDisplay) {
     const updateSpeed = () => {
       app.state.animationSpeedFactor = getAnimationSpeedFactorFromSliderValue(speedSlider.value);
@@ -64,24 +58,24 @@ export function bindControls(app) {
   if (playResetButton) {
     playResetButton.addEventListener("click", () => {
       if (app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS) {
-        if (
-          app.state.mainGameState === MAIN_GAME_STATES.RUNNING ||
-          app.state.activeLevelResult === LEVEL_RESULT.PASSED ||
-          app.state.activeLevelResult === LEVEL_RESULT.FAILED
-        ) {
-          setBlocklyEditable(app, true);
-          resetCurrentLevel(app);
-        } else {
-          startLevel(app, app.state.currentLevelId);
-        }
+      if (
+        app.state.mainGameState === MAIN_GAME_STATES.RUNNING ||
+        app.state.activeLevelResult === LEVEL_RESULT.PASSED ||
+        app.state.activeLevelResult === LEVEL_RESULT.FAILED
+      ) {
+        app.hooks.setBlocklyEditable?.(true);
+        resetCurrentLevel(app);
+      } else {
+        startLevel(app, app.state.currentLevelId);
+      }
       } else if (app.state.mainGameState === MAIN_GAME_STATES.SETUP || app.state.mainGameState === MAIN_GAME_STATES.GAME_OVER) {
-        setBlocklyEditable(app, false);
+        app.hooks.setBlocklyEditable?.(false);
         startGame(app);
       } else if (app.state.mainGameState === MAIN_GAME_STATES.RUNNING) {
-        setBlocklyEditable(app, true);
+        app.hooks.setBlocklyEditable?.(true);
         resetGameToSetup(app);
       } else {
-        setBlocklyEditable(app, true);
+        app.hooks.setBlocklyEditable?.(true);
         enterFreePlay(app);
       }
       app.syncUi();
@@ -103,13 +97,13 @@ export function bindControls(app) {
 
   if (exportWorkspaceButton) {
     exportWorkspaceButton.addEventListener("click", () => {
-      const xmlText = getWorkspaceXmlText(app);
+      const xmlText = app.hooks.getWorkspaceXmlText?.() || "";
       const blob = new Blob([xmlText], { type: "text/xml;charset=utf-8" });
       const link = document.createElement("a");
       const modeLabel = app.state.currentModeView === GAME_VIEW_MODES.GUIDED_LEVELS
         ? app.state.currentLevelId || "guided-level"
         : app.state.freePlayMode === FREE_PLAY_MODES.PLAYER_VS_PLAYER
-          ? `free-play-${getActiveBlocklyProgramLabel(app).toLowerCase().replace(/\s+/g, "-")}`
+          ? `free-play-${(app.hooks.getActiveProgramLabel?.() || "player-team").toLowerCase().replace(/\s+/g, "-")}`
           : "free-play-player-team";
       link.href = URL.createObjectURL(blob);
       link.download = `${modeLabel}.xml`;
@@ -128,7 +122,10 @@ export function bindControls(app) {
         return;
       }
       const xmlText = await file.text();
-      importWorkspaceXml(app, xmlText);
+      const result = app.hooks.importWorkspaceXml?.(xmlText);
+      app.state.workspaceImportStatus = result?.ok
+        ? { tone: "success", message: "Program imported successfully." }
+        : { tone: "error", message: `Import failed. ${result?.error || "Please check the XML and try again."}` };
       app.syncUi();
       importWorkspaceInput.value = "";
     });
@@ -140,7 +137,7 @@ export function bindControls(app) {
       if (!target) {
         return;
       }
-      switchActiveBlocklyTeamTab(app, Number(target.dataset.blocklyTeamTab));
+      app.hooks.switchActiveBlocklyTeamTab?.(Number(target.dataset.blocklyTeamTab));
       app.syncUi();
     });
   }
@@ -177,6 +174,18 @@ export function bindControls(app) {
     app.hooks.syncBlocklySizeControls = syncBlocklySizeControls;
     syncBlocklySizeControls();
   }
+
+  if (boardRetryButton) {
+    boardRetryButton.addEventListener("click", () => {
+      app.hooks.retryBoardLoad?.();
+    });
+  }
+
+  if (blocklyRetryButton) {
+    blocklyRetryButton.addEventListener("click", () => {
+      app.hooks.retryEditorLoad?.();
+    });
+  }
 }
 
 export function handleKeyInput(app, rawKey) {
@@ -194,7 +203,6 @@ export function handleKeyInput(app, rawKey) {
   }
 
   const key = `${rawKey || ""}`.toLowerCase();
-  const isP1JumpKey = key === P1_KEY_BINDINGS.JUMP || (P1_KEY_ALIASES.JUMP || []).includes(key);
   let actionData = {};
   let validKeyPress = false;
 
@@ -203,7 +211,7 @@ export function handleKeyInput(app, rawKey) {
     else if (key === P1_KEY_BINDINGS.DOWN) { actionData = { type: "MOVE", dy: 1 }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.LEFT) { actionData = { type: "MOVE", dx: -1 }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.RIGHT) { actionData = { type: "MOVE", dx: 1 }; validKeyPress = true; }
-    else if (isP1JumpKey) { actionData = { type: AI_ACTION_TYPES.JUMP_FORWARD }; validKeyPress = true; }
+    else if (key === P1_KEY_BINDINGS.JUMP) { actionData = { type: AI_ACTION_TYPES.JUMP_FORWARD }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.PLACE_BARRIER) { actionData = { type: AI_ACTION_TYPES.PLACE_BARRIER_FORWARD }; validKeyPress = true; }
     else if (key === P1_KEY_BINDINGS.STAY_STILL) { actionData = { type: AI_ACTION_TYPES.STAY_STILL }; validKeyPress = true; }
   } else if (currentPlayer.team === 2) {

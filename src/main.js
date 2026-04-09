@@ -1,25 +1,10 @@
 import { createApp } from "./core/state.js";
 import { initializeDisplayState } from "./core/setup.js";
-import {
-  getAvailableToolboxBlockLabels,
-  getAvailableToolboxBlockTypes,
-  getMoveTowardTargetLabels,
-  getSensorObjectLabels,
-  getSensorRelationLabels,
-  getWorkspaceXmlText,
-  importWorkspaceXml,
-  initializeBlocklyPanelSize,
-  initBlockly,
-  loadWorkspaceFromLocalStorage,
-  setBlocklyEditable,
-  setBlocklyToolboxForCurrentMode
-} from "./ai/blockly/workspace.js";
 import { bindControls, handleKeyInput } from "./ui/controls.js";
 import { bindGoalBurstOverlay, renderGoalBurstOverlay } from "./ui/goalBurstOverlay.js";
 import { initializeSoundState } from "./ui/sound.js";
 import { updateScoreDisplay } from "./ui/scoreboard.js";
 import { setPlayButtonState } from "./ui/gameStateUI.js";
-import { initializeP5App } from "./render/p5App.js";
 import {
   configureFreePlay,
   enterFreePlay,
@@ -30,10 +15,8 @@ import {
   initializeLevelState,
   startLevel
 } from "./core/levels.js";
-import { switchActiveBlocklyTeamTab } from "./ai/blockly/workspace.js";
 import { bindLevelPanel, renderLevelPanel } from "./ui/levels.js";
 import { renderBlocklyPanel } from "./ui/blocklyPanel.js";
-import { getAIAllyAction } from "./ai/blockly/interpreter.js";
 import { processTurnActions } from "./core/turnEngine.js";
 import {
   bindTutorialOverlay,
@@ -44,44 +27,116 @@ import {
   startCurrentLevelTutorial,
   updateSpotlight
 } from "./ui/tutorialOverlay.js";
+import { startHeavyBoot, retryBoardLoad, retryEditorLoad, whenHeavySystemsReady } from "./startup/loaders.js";
 
 const app = createApp();
 app.ui.isLevelPickerOpen = false;
 initializeSoundState(app.state);
 
+function renderLoadingPanels() {
+  const boardPlaceholder = document.getElementById("board-loading-placeholder");
+  const boardMessage = document.getElementById("board-loading-message");
+  const boardError = document.getElementById("board-loading-error-message");
+  const boardRetry = document.getElementById("board-loading-retry");
+  const canvasContainer = document.getElementById("canvas-container");
+  const blocklyPlaceholder = document.getElementById("blockly-loading-placeholder");
+  const blocklyMessage = document.getElementById("blockly-loading-message");
+  const blocklyError = document.getElementById("blockly-loading-error-message");
+  const blocklyRetry = document.getElementById("blockly-loading-retry");
+  const blocklyDiv = document.getElementById("blocklyDiv");
+
+  if (boardPlaceholder && canvasContainer) {
+    boardPlaceholder.hidden = app.state.boardReady;
+    canvasContainer.classList.toggle("panel-live", app.state.boardReady);
+    if (boardMessage) {
+      boardMessage.textContent = app.state.boardLoadError ? "The game board did not finish loading." : "Preparing game board...";
+    }
+    if (boardError) {
+      boardError.textContent = app.state.boardLoadError || "";
+    }
+    if (boardRetry) {
+      boardRetry.hidden = !app.state.boardLoadError;
+    }
+  }
+
+  if (blocklyPlaceholder && blocklyDiv) {
+    blocklyPlaceholder.hidden = app.state.editorReady;
+    blocklyDiv.hidden = !app.state.editorReady;
+    if (blocklyMessage) {
+      blocklyMessage.textContent = app.state.editorLoadError ? "The code block editor did not finish loading." : "Loading code blocks...";
+    }
+    if (blocklyError) {
+      blocklyError.textContent = app.state.editorLoadError || "";
+    }
+    if (blocklyRetry) {
+      blocklyRetry.hidden = !app.state.editorLoadError;
+    }
+  }
+}
+
 function loadCurrentLevelWorkspace() {
   const currentLevel = getCurrentLevel(app);
-  if (!currentLevel) {
+  if (!currentLevel || !app.hooks.loadWorkspaceFromLocalStorage) {
     return;
   }
-  loadWorkspaceFromLocalStorage(app, currentLevel.initialBlocklyXml || "");
+  app.hooks.loadWorkspaceFromLocalStorage(currentLevel.initialBlocklyXml || "");
+}
+
+function syncEditorForCurrentMode() {
+  if (!app.state.editorReady) {
+    return;
+  }
+
+  if (app.state.currentModeView === "GUIDED_LEVELS") {
+    const shouldBeEditable = app.state.mainGameState !== "RUNNING";
+    app.hooks.setBlocklyEditable?.(shouldBeEditable);
+    app.hooks.setBlocklyToolboxForCurrentMode?.();
+    loadCurrentLevelWorkspace();
+    return;
+  }
+
+  closeTutorial(app, false);
+  app.hooks.setBlocklyEditable?.(true);
+  app.hooks.setBlocklyToolboxForCurrentMode?.();
+  app.hooks.loadWorkspaceFromLocalStorage?.("");
+}
+
+function maybeStartCurrentTutorial() {
+  if (app.state.showModePicker || !app.state.editorReady || !app.state.boardReady || app.state.mainGameState !== "SETUP") {
+    return;
+  }
+  const currentLevel = getCurrentLevel(app);
+  if (app.state.currentModeView === "GUIDED_LEVELS" && currentLevel) {
+    maybeStartLevelTutorial(app, currentLevel);
+  }
 }
 
 app.hooks.onGuidedLevelSelected = () => {
-  setBlocklyEditable(app, true);
-  setBlocklyToolboxForCurrentMode(app);
-  loadCurrentLevelWorkspace();
-  maybeStartLevelTutorial(app, getCurrentLevel(app));
+  syncEditorForCurrentMode();
+  maybeStartCurrentTutorial();
 };
 
 app.hooks.onFreePlayEntered = () => {
-  closeTutorial(app, false);
-  setBlocklyEditable(app, true);
-  setBlocklyToolboxForCurrentMode(app);
-  loadWorkspaceFromLocalStorage(app, "");
+  syncEditorForCurrentMode();
 };
 
 app.hooks.onLevelStarted = () => {
   closeTutorial(app, true);
-  setBlocklyToolboxForCurrentMode(app);
-  setBlocklyEditable(app, false);
+  app.hooks.setBlocklyToolboxForCurrentMode?.();
+  app.hooks.setBlocklyEditable?.(false);
 };
+
 app.hooks.onLevelEnded = () => {
-  setBlocklyEditable(app, true);
+  app.hooks.setBlocklyEditable?.(true);
 };
+
 app.hooks.startCurrentLevelTutorial = (force = false) => {
+  if (!app.state.boardReady || !app.state.editorReady) {
+    return;
+  }
   startCurrentLevelTutorial(app, force);
 };
+
 app.hooks.chooseInitialMode = (mode) => {
   if (mode === "guided") {
     enterGuidedMode(app);
@@ -90,13 +145,37 @@ app.hooks.chooseInitialMode = (mode) => {
   }
 };
 
+app.hooks.onEditorReady = () => {
+  syncEditorForCurrentMode();
+  maybeStartCurrentTutorial();
+};
+
+app.hooks.onBoardReady = () => {
+  maybeStartCurrentTutorial();
+};
+
+app.hooks.syncCurrentModeAfterSubsystemReady = () => {
+  maybeStartCurrentTutorial();
+};
+
+app.hooks.retryBoardLoad = () => retryBoardLoad(app);
+app.hooks.retryEditorLoad = () => retryEditorLoad(app);
+
 app.syncUi = () => {
+  renderLoadingPanels();
   app.hooks.updateControlsVisibility?.();
   app.hooks.syncBlocklySizeControls?.();
   updateScoreDisplay(app);
   setPlayButtonState(app);
   renderLevelPanel(app);
   renderBlocklyPanel(app);
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      app.hooks.resizeBlockly?.();
+    });
+  } else {
+    app.hooks.resizeBlockly?.();
+  }
   renderGoalBurstOverlay(app);
   updateSpotlight(app);
   renderTutorialOverlay(app);
@@ -104,30 +183,31 @@ app.syncUi = () => {
 
 initializeLevelState(app);
 initializeTutorialState(app);
-initBlockly(app);
-initializeBlocklyPanelSize(app);
 bindControls(app);
 bindGoalBurstOverlay(app);
 bindLevelPanel(app);
 bindTutorialOverlay(app);
 initializeDisplayState(app);
-initializeP5App(app);
 app.syncUi();
+startHeavyBoot(app);
 
 window.__BBA_TEST_HOOKS__ = {
   getState: () => app.state,
   getLevelState: () => getLevelStateSnapshot(app),
   getBlocklyWorkspace: () => app.blocklyWorkspace,
-  getAvailableToolboxBlockTypes: () => getAvailableToolboxBlockTypes(app),
-  getAvailableToolboxBlockLabels: () => getAvailableToolboxBlockLabels(app),
-  getMoveTowardTargetLabels: () => getMoveTowardTargetLabels(),
-  getSensorObjectLabels: () => getSensorObjectLabels(),
-  getSensorRelationLabels: () => getSensorRelationLabels(),
-  loadWorkspaceXml: (xmlText) => importWorkspaceXml(app, xmlText),
-  getWorkspaceXmlText: () => getWorkspaceXmlText(app),
-  getAIAllyAction: () => getAIAllyAction(app),
+  getAvailableToolboxBlockTypes: () => app.hooks.getAvailableToolboxBlockTypes?.() || [],
+  getAvailableToolboxBlockLabels: () => app.hooks.getAvailableToolboxBlockLabels?.() || [],
+  getMoveTowardTargetLabels: () => app.hooks.getMoveTowardTargetLabels?.() || [],
+  getSensorObjectLabels: () => app.hooks.getSensorObjectLabels?.() || [],
+  getSensorRelationLabels: () => app.hooks.getSensorRelationLabels?.() || [],
+  loadWorkspaceXml: (xmlText) => app.hooks.importWorkspaceXml?.(xmlText),
+  getWorkspaceXmlText: () => app.hooks.getWorkspaceXmlText?.() || "",
+  getAIAllyAction: (runnerOverride = null) => app.hooks.getAIAllyAction?.(runnerOverride),
+  isEditorReady: () => Boolean(app.state.editorReady),
+  isBoardReady: () => Boolean(app.state.boardReady),
+  waitForHeavyReady: () => whenHeavySystemsReady(app),
   startCurrentLevelTutorial: (force = false) => {
-    startCurrentLevelTutorial(app, force);
+    app.hooks.startCurrentLevelTutorial?.(force);
     app.syncUi();
   },
   startLevel: (levelId) => {
@@ -146,7 +226,7 @@ window.__BBA_TEST_HOOKS__ = {
     return getLevelStateSnapshot(app);
   },
   switchBlocklyTeamTab: (teamId) => {
-    switchActiveBlocklyTeamTab(app, teamId);
+    app.hooks.switchActiveBlocklyTeamTab?.(teamId);
     app.syncUi();
     return getLevelStateSnapshot(app);
   },
@@ -156,7 +236,11 @@ window.__BBA_TEST_HOOKS__ = {
     return result;
   },
   processTurn: () => {
-    processTurnActions(app, app.p5Instance);
+    processTurnActions(app, app.p5Instance || {
+      lerp(start, end, amount) {
+        return start + (end - start) * amount;
+      }
+    });
     app.syncUi();
     return app.state;
   },

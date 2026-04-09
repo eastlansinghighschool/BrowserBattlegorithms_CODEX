@@ -11,13 +11,23 @@
     <header class="app-header">
       <div class="app-header-inner">
         <h1>Browser Battlegorithms</h1>
+        <a id="helpLink" class="app-help-link" href="./help.html" target="_blank" rel="noopener" aria-label="Open Help">
+          ?
+        </a>
       </div>
     </header>
     <div id="tutorial-overlay" aria-live="polite"></div>
     <div id="goal-burst-overlay" aria-hidden="true"></div>
     <div id="game-container">
       <main id="simulation-region">
-        <div id="canvas-container"></div>
+        <div id="canvas-container">
+          <div id="board-loading-placeholder" class="panel-loading-card">
+            <div class="panel-loading-grid" aria-hidden="true"></div>
+            <p id="board-loading-message" class="panel-loading-title">Preparing game board...</p>
+            <p id="board-loading-error-message" class="panel-loading-error"></p>
+            <button id="board-loading-retry" type="button" hidden>Retry Board</button>
+          </div>
+        </div>
         <div id="instructions">
           <div id="primary-level-actions">
             <button id="playResetButton" style="padding: 10px 20px; font-size: 16px;">Play</button>
@@ -39,8 +49,9 @@
         <h2 id="blocklyPanelTitle">AI Ally Program</h2>
         <div id="blockly-program-tabs"></div>
         <div id="blockly-program-summary"></div>
+        <p id="workspace-import-status" class="workspace-import-status" hidden></p>
         <div id="blockly-toolbar">
-          <div id="blockly-size-controls" aria-label="Blockly workspace size">
+          <div id="blockly-size-controls" aria-label="Program workspace size">
             <button type="button" data-blockly-size="compact">Compact</button>
             <button type="button" data-blockly-size="standard">Standard</button>
             <button type="button" data-blockly-size="tall">Tall</button>
@@ -50,7 +61,19 @@
           <button id="soundToggleButton" type="button">Sound: On</button>
           <input id="importWorkspaceInput" type="file" accept=".xml,text/xml" hidden>
         </div>
-        <div id="blocklyDiv"></div>
+        <div id="blockly-workspace-shell">
+          <div id="blockly-loading-placeholder" class="panel-loading-card panel-loading-card-program">
+            <div class="panel-loading-blocks" aria-hidden="true">
+              <span class="panel-loading-block panel-loading-block-wide"></span>
+              <span class="panel-loading-block panel-loading-block-medium"></span>
+              <span class="panel-loading-block panel-loading-block-small"></span>
+            </div>
+            <p id="blockly-loading-message" class="panel-loading-title">Loading code blocks...</p>
+            <p id="blockly-loading-error-message" class="panel-loading-error"></p>
+            <button id="blockly-loading-retry" type="button" hidden>Retry Editor</button>
+          </div>
+          <div id="blocklyDiv" hidden></div>
+        </div>
       </aside>
     </div>
     <script type="module" src="./src/main.js"></script>

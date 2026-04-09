@@ -6,16 +6,15 @@
 
 These tests focus on:
 
-- setup and mode initialization
-- movement and collision rules
-- scoring and round reset
-- core invariants
-- NPC legality and simple action selection
-- level definitions, pass/fail evaluation, and unlock progression across the 20-level guided campaign
-- guided-mode setup details such as toolbox restriction and human-turn behavior defaults
-- condition evaluation and Blockly decision selection for the first one-branch conditional blocks and the generic sensing family
-- parameterized `Move Toward [target]` decision selection and target tie-break behavior
-- free-play-only readiness, teammate, territory, random-move, and Area Freeze behavior
+- team/setup contracts and free-play roster generation
+- movement, collision, and own-flag occupancy rules
+- scoring, reset, and guided level-state progression
+- authored guided-level contracts, unlock matrices, and content metadata
+- Blockly interpreter semantics and execution-hint behavior
+- condition and generic sensor evaluation
+- reference solution existence and solvability across the guided campaign
+- free-play-only toolbox, random-move, and Area Freeze contracts
+- pure display and keyboard-mapping logic
 
 ## Browser Tests
 
@@ -23,30 +22,23 @@ These tests focus on:
 
 Playwright tests cover:
 
-- app boot
-- visible canvas and Blockly workspace
-- first-run mode chooser flow
-- guided tutorial overlay behavior
-- play/reset flow
-- basic input and UI interactions
-- required `On Each Turn` Blockly event block
-- new guided conditional blocks and their level-specific tutorials
-- generic sensing blocks, their level-gated object/relation dropdowns, and the first sensing-track levels
-- later guided lessons for human-runner control, `Move Toward`, jump, barrier placement/removal, teammate logic, territory checks, and Area Freeze
-- Blockly toolbox restriction in guided levels and broader tooling in free play
-- free-play availability of the parameterized `Move Toward` block and its target dropdown options
-- free-play availability and behavior of `Move Randomly`, `Freeze Opponents`, and the newer readiness/team/territory condition blocks
+- startup shell, welcome chooser, and lazy-load placeholders
+- guided tutorial overlay behavior and level-picker interaction
+- guided start/reset/next-level flow and HUD behavior
+- actual keyboard input in representative guided and PvP scenarios
+- panel collapse, Blockly resizing, and desktop workspace size controls
 - free-play setup controls for mode, team size, and map selection
-- PvP free-play team tab switching and separate Blockly programs per side
-- PvCPU Easy and PvCPU Tactical startup and behavior smoke coverage
-- guided completion flow, including `Next Level`
-- Blockly becoming editable again after guided pass/fail results
-- guided level picker popover behavior
-- test hook access for deterministic browser assertions
+- PvP free-play team tab switching and separate programs per side
+- free-play mode smoke coverage for PvP, PvCPU Easy, and PvCPU Tactical
+- Local Storage persistence across reload for guided and free-play programs
+- sound preference persistence and malformed XML import feedback
+- help-link behavior and standalone help-page navigation
 
 ## Notes
 
 - The suite is intentionally split between pure JavaScript rule coverage and browser integration coverage.
-- Blockly workspace loading for tests uses a narrow test hook to avoid brittle drag-and-drop automation for most scenarios.
-- Browser tests currently focus on high-value guided-mode regressions and smoke coverage rather than exhaustive visual or full-playthrough automation.
+- Unit tests are now split by subsystem under `tests/unit/` instead of living in one catch-all file.
+- Browser tests now focus on student-visible journeys and breakable UI transitions, not exhaustive authored-level or engine-detail assertions.
+- Blockly workspace loading for tests still uses a narrow test hook to avoid brittle drag-and-drop automation for most scenarios.
+- Authored level contracts, toolbox gates, engine invariants, and decision-selection details belong in `npm run test:unit` unless the learner can directly see the behavior in the browser.
 - Release validation should include `npm test`, `npm run build`, and `npm run test:browser` before shipping or deploying.

@@ -25,7 +25,6 @@ import { resetRound } from "./setup.js";
 import { calculateNpcType1Action } from "../ai/npc/npcType1.js";
 import { calculateNpcType2Action } from "../ai/npc/npcType2.js";
 import { calculateFreePlayCpuAction } from "../ai/npc/freePlayCpu.js";
-import { getAIAllyAction } from "../ai/blockly/interpreter.js";
 import { Barrier } from "../entities/Barrier.js";
 import { evaluateLevelProgress } from "./levels.js";
 import { triggerGoalBurst } from "./levels.js";
@@ -121,7 +120,7 @@ function planActionForActiveRunner(app, runner) {
     return;
   }
 
-  let aiDecision = getAIAllyAction(app, runner);
+  let aiDecision = app.hooks.getAIAllyAction?.(runner) || { type: AI_ACTION_TYPES.STAY_STILL };
 
   let queued = translateActionDecision(runner, aiDecision, state);
   if (queued.actionType === AI_ACTION_TYPES.JUMP_FORWARD && !runner.canJump) {

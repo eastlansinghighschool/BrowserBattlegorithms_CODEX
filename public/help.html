@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Battlegorithms Help</title>
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="stylesheet" href="./help.css">
+  </head>
+  <body>
+    <div class="help-shell">
+      <aside class="help-sidebar">
+        <h1>Browser Battlegorithms Help</h1>
+        <p>Quick reference for learning the board, the blocks, and good team strategy.</p>
+
+        <nav class="help-nav-group">
+          <h2>General</h2>
+          <a href="#general-what">What is Battlegorithms?</a>
+          <a href="#general-board">Board and teams</a>
+          <a href="#general-controls">Human controls</a>
+          <a href="#general-modes">Guided vs free play</a>
+          <a href="#general-rules">Winning and special actions</a>
+        </nav>
+
+        <nav class="help-nav-group">
+          <h2>Blocks</h2>
+          <a href="#blocks-how">How block programs work</a>
+          <a href="#blocks-event">Event block</a>
+          <a href="#blocks-movement">Movement blocks</a>
+          <a href="#blocks-conditions">Condition blocks</a>
+          <a href="#blocks-advanced">Advanced logic and value blocks</a>
+        </nav>
+
+        <nav class="help-nav-group">
+          <h2>Strategy</h2>
+          <a href="#strategy-beginner">Beginner strategy</a>
+          <a href="#strategy-sensing">Sensing and reacting</a>
+          <a href="#strategy-special">Using special abilities</a>
+          <a href="#strategy-teamwork">Teamwork and runner roles</a>
+          <a href="#strategy-freeplay">Free play tips</a>
+        </nav>
+      </aside>
+
+      <main class="help-main">
+        <section id="general-what" class="help-hero">
+          <h2>What Is Battlegorithms?</h2>
+          <p class="help-lead">Browser Battlegorithms is a strategy game where teams race to grab the other side’s flag and bring it home. You can control human runners with the keyboard and teach allies what to do by connecting code blocks into a short program.</p>
+          <div>
+            <span class="visual-chip">🏃 Ally runner</span>
+            <span class="visual-chip">🏃 Enemy runner</span>
+            <span class="visual-chip">🚩 Home flag</span>
+            <span class="visual-chip">🏳️ Enemy flag</span>
+            <span class="visual-chip">🚧 Barrier</span>
+          </div>
+        </section>
+
+        <section id="general-board" class="help-section">
+          <h2>Board And Teams</h2>
+          <div class="glossary-grid">
+            <div class="glossary-card"><strong>Runner</strong><br>Your moving game piece. Some runners are humans, some follow your program, and some are computer opponents.</div>
+            <div class="glossary-card"><strong>Home side</strong><br>The half of the field where your team starts and where your own flag belongs.</div>
+            <div class="glossary-card"><strong>Enemy side</strong><br>The half of the field where the other team starts and where their flag begins.</div>
+            <div class="glossary-card"><strong>Frozen</strong><br>A frozen runner cannot move for a short time.</div>
+            <div class="glossary-card"><strong>Barrier</strong><br>A temporary obstacle that blocks a lane until removed or expired.</div>
+            <div class="glossary-card"><strong>Target square</strong><br>A highlighted practice square used in some guided levels.</div>
+          </div>
+        </section>
+
+        <section id="general-controls" class="help-section">
+          <h2>Human Controls</h2>
+          <p>Some guided levels and all free play matches can include human runners. Each team uses a different part of the keyboard.</p>
+          <div class="strategy-grid">
+            <div class="strategy-card">
+              <strong>Team 1</strong>
+              <p><span class="keycaps"><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span></span> move</p>
+              <p><span class="keycaps"><span class="keycap">F</span></span> jump</p>
+              <p><span class="keycaps"><span class="keycap">B</span></span> place barrier</p>
+              <p><span class="keycaps"><span class="keycap">X</span></span> stay still</p>
+            </div>
+            <div class="strategy-card">
+              <strong>Team 2</strong>
+              <p><span class="keycaps"><span class="keycap">O</span><span class="keycap">K</span><span class="keycap">L</span><span class="keycap">;</span></span> move</p>
+              <p><span class="keycaps"><span class="keycap">M</span></span> jump</p>
+              <p><span class="keycaps"><span class="keycap">I</span></span> place barrier</p>
+              <p><span class="keycaps"><span class="keycap">.</span></span> stay still</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="general-modes" class="help-section">
+          <h2>Guided Levels Vs Free Play</h2>
+          <ul>
+            <li><strong>Guided Levels</strong> teach one idea at a time with a small challenge.</li>
+            <li><strong>Free Play</strong> lets you choose teams, map, and opponent style.</li>
+            <li><strong>Player vs Player</strong> gives both sides a human runner and a separate program tab.</li>
+            <li><strong>Player vs CPU</strong> lets you test your ideas against easy or tactical computer teams.</li>
+          </ul>
+        </section>
+
+        <section id="general-rules" class="help-section">
+          <h2>Winning, Scoring, Flags, Freezing, Barriers, Jumping</h2>
+          <ul>
+            <li>Pick up the enemy flag by reaching its square.</li>
+            <li>Score by carrying that flag back to your home side.</li>
+            <li>You cannot stand on your own team’s flag while it is sitting at home.</li>
+            <li>Jump moves forward two spaces and is usually a one-time ability each round.</li>
+            <li>Place Barrier creates a forward obstacle if the space is legal.</li>
+            <li>Freeze Opponents affects nearby enemies for a short time.</li>
+          </ul>
+        </section>
+
+        <section id="blocks-how" class="help-section">
+          <h2>How Block Programs Work</h2>
+          <p>Your program runs once each time that runner gets a turn. Start with the event block, connect other blocks under it, and remember that the runner uses the <strong>first action it reaches</strong> in the chain.</p>
+          <p>If a condition block is true, the runner uses the action inside that branch. If the branch does not contain an action, the program keeps looking below.</p>
+        </section>
+
+        <section id="blocks-event" class="block-group">
+          <h2>Event Block</h2>
+          <div class="block-card">
+            <div class="block-pill event">On Each Turn</div>
+            <p>This is the starting point for every runner program. Put your movement or condition blocks underneath it.</p>
+          </div>
+        </section>
+
+        <section id="blocks-movement" class="block-group">
+          <h2>Movement Blocks</h2>
+          <div class="block-grid">
+            <article class="block-card"><div class="block-pill">Move Forward</div><p>Move one space in your runner’s forward direction.</p></article>
+            <article class="block-card"><div class="block-pill">Move Backward</div><p>Move one space backward.</p></article>
+            <article class="block-card"><div class="block-pill">Move Up (screen)</div><p>Move one space upward on the screen.</p></article>
+            <article class="block-card"><div class="block-pill">Move Down (screen)</div><p>Move one space downward on the screen.</p></article>
+            <article class="block-card"><div class="block-pill">Move Randomly</div><p>Choose one random direction. Great for experiments, not for careful plans.</p></article>
+            <article class="block-card"><div class="block-pill">Move Toward</div><p>Step toward a chosen target such as the enemy flag, your base, the human runner, or the closest enemy.</p></article>
+            <article class="block-card"><div class="block-pill">Stay Still</div><p>Do not move. In some situations this can also clear a barrier directly in front.</p></article>
+            <article class="block-card"><div class="block-pill">Jump Forward</div><p>Leap forward over one space and land two spaces ahead if the landing space is open.</p></article>
+            <article class="block-card"><div class="block-pill">Place Barrier</div><p>Place a barrier in front of the runner if that space is legal.</p></article>
+            <article class="block-card"><div class="block-pill">Freeze Opponents</div><p>Freeze nearby opponents when the team freeze is ready.</p></article>
+          </div>
+        </section>
+
+        <section id="blocks-conditions" class="block-group">
+          <h2>Condition Blocks</h2>
+          <div class="block-grid">
+            <article class="block-card"><div class="block-pill condition">If sensor matches</div><p>Check an object and a relationship, then run the action inside if it is true.</p></article>
+            <article class="block-card"><div class="block-pill condition">If sensor matches else</div><p>Choose one action when the check is true and a different action when it is false.</p></article>
+            <article class="block-card"><div class="block-pill condition">If barrier in front</div><p>Quick shortcut for checking whether a barrier is directly ahead.</p></article>
+            <article class="block-card"><div class="block-pill condition">If barrier in front else</div><p>Barrier shortcut with an else branch.</p></article>
+            <article class="block-card"><div class="block-pill condition">If enemy in front</div><p>Shortcut for checking an enemy directly ahead.</p></article>
+            <article class="block-card"><div class="block-pill condition">If have enemy flag</div><p>Check whether this runner is already carrying the enemy flag.</p></article>
+            <article class="block-card"><div class="block-pill condition">If have enemy flag else</div><p>Use one plan before pickup and a different plan after pickup.</p></article>
+            <article class="block-card"><div class="block-pill condition">If can jump</div><p>Check whether jump is still available.</p></article>
+            <article class="block-card"><div class="block-pill condition">If can jump else</div><p>Jump when ready, otherwise do something else.</p></article>
+            <article class="block-card"><div class="block-pill condition">If can place barrier</div><p>Check whether the runner can place a barrier right now.</p></article>
+            <article class="block-card"><div class="block-pill condition">If can place barrier else</div><p>Barrier check with a fallback branch.</p></article>
+            <article class="block-card"><div class="block-pill condition">If area freeze is ready</div><p>Check whether the team freeze can still be used.</p></article>
+            <article class="block-card"><div class="block-pill condition">If area freeze is ready else</div><p>Freeze if ready, otherwise keep to the backup plan.</p></article>
+            <article class="block-card"><div class="block-pill condition">If teammate has flag</div><p>Check whether another runner on your team is carrying the enemy flag.</p></article>
+            <article class="block-card"><div class="block-pill condition">If teammate has flag else</div><p>Helpful for escort and support roles.</p></article>
+            <article class="block-card"><div class="block-pill condition">If on my side</div><p>Check whether the runner is still on the home half of the board.</p></article>
+            <article class="block-card"><div class="block-pill condition">If on my side else</div><p>Use different behavior before and after crossing midfield.</p></article>
+            <article class="block-card"><div class="block-pill condition">If on enemy side</div><p>Directly test whether the runner is already across midfield.</p></article>
+            <article class="block-card"><div class="block-pill condition">If on enemy side else</div><p>Enemy-side territory check with a fallback branch.</p></article>
+          </div>
+        </section>
+
+        <section id="blocks-advanced" class="block-group">
+          <h2>Advanced Logic And Value Blocks</h2>
+          <div class="block-grid">
+            <article class="block-card"><div class="block-pill advanced">If [boolean]</div><p>Use any advanced true/false block as the test.</p></article>
+            <article class="block-card"><div class="block-pill advanced">If [boolean] else</div><p>Advanced condition block with a false branch.</p></article>
+            <article class="block-card"><div class="block-pill advanced">sensor match value</div><p>True/false version of the sensor check.</p></article>
+            <article class="block-card"><div class="block-pill advanced">have enemy flag value</div><p>True when this runner is carrying the enemy flag.</p></article>
+            <article class="block-card"><div class="block-pill advanced">can jump value</div><p>True when jump is still available.</p></article>
+            <article class="block-card"><div class="block-pill advanced">can place barrier value</div><p>True when a barrier can still be placed.</p></article>
+            <article class="block-card"><div class="block-pill advanced">area freeze ready value</div><p>True when the team freeze has not been spent.</p></article>
+            <article class="block-card"><div class="block-pill advanced">teammate has flag value</div><p>True when another ally is carrying the enemy flag.</p></article>
+            <article class="block-card"><div class="block-pill advanced">on my side value</div><p>True when this runner is on the home half.</p></article>
+            <article class="block-card"><div class="block-pill advanced">on enemy side value</div><p>True when this runner has crossed midfield.</p></article>
+            <article class="block-card"><div class="block-pill advanced">AND</div><p>True only when both inputs are true.</p></article>
+            <article class="block-card"><div class="block-pill advanced">OR</div><p>True when either input is true.</p></article>
+            <article class="block-card"><div class="block-pill advanced">NOT</div><p>Flips true to false and false to true.</p></article>
+            <article class="block-card"><div class="block-pill advanced">Number</div><p>A typed number such as 0, 1, 2, or 3.</p></article>
+            <article class="block-card"><div class="block-pill advanced">Runner index</div><p>Shows which shared-program ally this runner is: 0, 1, 2, and so on.</p></article>
+            <article class="block-card"><div class="block-pill advanced">Distance to target</div><p>Returns the grid distance to a chosen target.</p></article>
+            <article class="block-card"><div class="block-pill advanced">Random roll (1-6)</div><p>Returns a random whole number from 1 to 6.</p></article>
+            <article class="block-card"><div class="block-pill advanced">Play direction value</div><p>Returns the runner’s team direction as a number.</p></article>
+            <article class="block-card"><div class="block-pill advanced">Compare values</div><p>Compare two number blocks with =, ≠, &lt;, ≤, &gt;, or ≥.</p></article>
+          </div>
+        </section>
+
+        <section id="strategy-beginner" class="help-section">
+          <h2>Beginner Strategy</h2>
+          <div class="strategy-grid">
+            <div class="strategy-card"><strong>Make one clear plan.</strong><br>Early levels usually work best when the runner keeps doing one simple thing every turn.</div>
+            <div class="strategy-card"><strong>Watch the goal.</strong><br>Sometimes you only need to reach a target square. Other times you need to carry a flag all the way home.</div>
+            <div class="strategy-card"><strong>Remember the first action rule.</strong><br>The runner uses the first action it reaches, so order matters.</div>
+          </div>
+        </section>
+
+        <section id="strategy-sensing" class="help-section">
+          <h2>Sensing And Reacting</h2>
+          <ul>
+            <li>Use board checks when the puzzle changes based on what is nearby.</li>
+            <li>Sensors are strongest when they lead to one clear reaction.</li>
+            <li>Move Toward is helpful on open boards, but it is not full pathfinding.</li>
+          </ul>
+        </section>
+
+        <section id="strategy-special" class="help-section">
+          <h2>Using Special Abilities</h2>
+          <ul>
+            <li><strong>Jump</strong> is best when one leap solves a real obstacle problem.</li>
+            <li><strong>Barrier</strong> is strongest when it protects a lane or delays a carrier.</li>
+            <li><strong>Freeze</strong> works best when another runner can take advantage of the pause right away.</li>
+          </ul>
+        </section>
+
+        <section id="strategy-teamwork" class="help-section">
+          <h2>Teamwork And Runner Roles</h2>
+          <ul>
+            <li>Use <strong>runner index</strong> to split one shared program into different jobs.</li>
+            <li>Attackers chase flags, defenders react to threats, and support runners escort carriers.</li>
+            <li>Shared programs become more powerful when each ally has a clear role.</li>
+          </ul>
+        </section>
+
+        <section id="strategy-freeplay" class="help-section">
+          <h2>Free Play Tips</h2>
+          <ul>
+            <li>Start with a team size of 2 or 3 before trying bigger teams.</li>
+            <li>Easy CPU is good for experiments. Tactical CPU is better for testing real strategy.</li>
+            <li>In two-player mode, use the team tabs to switch between each side’s program.</li>
+            <li>Try different maps when a strategy feels too simple or too cramped.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

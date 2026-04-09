@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "npm run test:unit",
-    "test:unit": "node --test --test-isolation=none tests/unit/core.test.js",
+    "test:unit": "node --test --test-isolation=none tests/unit/teams-and-setup.test.js tests/unit/movement-and-collisions.test.js tests/unit/scoring-and-level-state.test.js tests/unit/conditions.test.js tests/unit/blockly-interpreter.test.js tests/unit/guided-level-contracts.test.js tests/unit/guided-reference-solutions.test.js tests/unit/free-play-contracts.test.js tests/unit/display-and-controls.test.js",
     "test:browser": "playwright test"
   },
   "devDependencies": {

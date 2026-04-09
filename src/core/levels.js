@@ -1,4 +1,3 @@
-import * as Blockly from "blockly";
 import {
   DEFAULT_GAME_MODE,
   DEFAULT_MAP_KEY,
@@ -157,15 +156,11 @@ export function startLevel(app, levelId = app.state.currentLevelId) {
 
 export function resetCurrentLevel(app, reason = "manual_reset") {
   const { state } = app;
-  const preservedWorkspaceXml = app.blocklyWorkspace
-    ? Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(app.blocklyWorkspace))
-    : "";
+  const preservedWorkspaceXml = app.hooks.getWorkspaceXmlText?.() || "";
   state.lastLevelResultReason = reason;
   enterGuidedMode(app);
   if (preservedWorkspaceXml) {
-    const xml = Blockly.utils.xml.textToDom(preservedWorkspaceXml);
-    app.blocklyWorkspace.clear();
-    Blockly.Xml.domToWorkspace(xml, app.blocklyWorkspace);
+    app.hooks.importWorkspaceXml?.(preservedWorkspaceXml);
   }
   return getCurrentLevel(app);
 }

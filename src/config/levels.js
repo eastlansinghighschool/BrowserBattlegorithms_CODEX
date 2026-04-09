@@ -430,9 +430,9 @@ const LEVEL_DEFINITIONS = [
     id: "move-to-target",
     title: "Level 1: Move to Target",
     description: "Guide your ally runner to the highlighted target square.",
-    introText: "This first level is a quiet practice board. Your Blockly code controls the ally runner, and the other runners stay still so you can focus on one simple goal.",
+    introText: "This first level is a quiet practice board. Your block program controls the ally runner, and the other runners stay still so you can focus on one simple goal.",
     legendItems: [
-      { emoji: "🏃🏿‍♂️", label: "Ally runner", description: "This is the runner your Blockly program controls." },
+      { emoji: "🏃🏿‍♂️", label: "Ally runner", description: "This is the runner your program controls." },
       { emoji: "🏃", label: "Enemy runner", description: "These runners belong to the other team." },
       { emoji: "⭕", label: "Target square", description: "Reach this highlighted square to clear the level." }
     ],
@@ -632,7 +632,7 @@ const LEVEL_DEFINITIONS = [
     },
     failureCondition: {
       type: "turn_limit_exceeded",
-      maxTurns: 12
+      maxTurns: 14
     },
     tutorialSteps: [
       {
@@ -741,7 +741,7 @@ const LEVEL_DEFINITIONS = [
     },
     failureCondition: {
       type: "turn_limit_exceeded",
-      maxTurns: 12
+      maxTurns: 14
     },
     tutorialSteps: [
       {
@@ -918,7 +918,7 @@ const LEVEL_DEFINITIONS = [
     },
     failureCondition: {
       type: "turn_limit_exceeded",
-      maxTurns: 12
+      maxTurns: 14
     },
     tutorialSteps: [
       {
@@ -951,13 +951,13 @@ const LEVEL_DEFINITIONS = [
   {
     id: "human-runner-practice",
     title: "Level 10: Human Runner Practice",
-    description: "Try the human runner controls so you know what you can do during free play.",
-    introText: "This level is about you, not the Blockly ally. Move the human runner with the keyboard and try at least one special action before reaching the goal.",
+    description: "Use the human runner controls, then reach the goal only after you use Jump or Place Barrier first.",
+    introText: "This level is about you, not the ally program. Move the human runner with the keyboard and use Jump or Place Barrier before reaching the goal.",
     tips: [
       "Use W A S D to move the human runner on screen.",
-      "Press J or F to jump, B to place a barrier, and X to stay still.",
-      "The goal only counts after you have used at least one special action first.",
-      "Blockly stays on screen, but this lesson is about direct player control."
+      "Press F to jump, B to place a barrier, and X to stay still.",
+      "The goal only counts after you have used Jump or Place Barrier first.",
+      "The program panel stays on screen, but this lesson is about direct player control."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -971,7 +971,6 @@ const LEVEL_DEFINITIONS = [
       actionTypes: [
         "JUMP_FORWARD",
         "PLACE_BARRIER_FORWARD",
-        "STAY_STILL"
       ]
     },
     failureCondition: {
@@ -988,13 +987,13 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-10-human-keys",
         title: "Keyboard Controls",
-        body: "Use W A S D to move. Press J or F to jump, B to place a barrier, and X to stay still. In free play, these human actions happen alongside your ally program.",
-        targetSelector: "#score-display"
+        body: "Use W A S D to move. Press F to jump, B to place a barrier, and X to stay still. In free play, these human actions happen alongside your ally program.",
+        targetSelector: "#instructions"
       },
       {
         id: "level-10-human-special",
         title: "Try One Special Action First",
-        body: "This challenge only passes if you reach the goal after using at least one special action like jump, place barrier, or stay still.",
+        body: "This challenge only passes if you reach the goal after you use Jump or Place Barrier first. Reaching the goal without one of those actions does not count yet.",
         targetSelector: "#canvas-container"
       }
     ],
@@ -1033,7 +1032,7 @@ const LEVEL_DEFINITIONS = [
     },
     failureCondition: {
       type: "turn_limit_exceeded",
-      maxTurns: 12
+      maxTurns: 14
     },
     tutorialSteps: [
       {
@@ -1059,7 +1058,7 @@ const LEVEL_DEFINITIONS = [
         runner_2_Npc2: { gridX: 10, gridY: 6, isFrozen: true, frozenTurnsRemaining: 999 }
       },
       flagOverrides: {
-        2: { gridX: 8, gridY: 3 }
+        2: { gridX: 11, gridY: 3 }
       }
     }
   },
@@ -1250,7 +1249,7 @@ const LEVEL_DEFINITIONS = [
     tips: [
       "Think about what should happen before the jump is spent and after it is gone.",
       "After the jump is used, the condition changes and the else move takes over.",
-      "This is your first resource-aware Blockly lesson."
+      "This is your first resource-aware lesson."
     ],
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
@@ -1269,7 +1268,7 @@ const LEVEL_DEFINITIONS = [
     tutorialSteps: [
       {
         id: "level-15-ready",
-        title: "Blockly Can Check What Is Ready",
+        title: "Your Program Can Check What Is Ready",
         body: "The If I Can Jump condition lets the ally behave one way before the jump is used and another way after it is gone. This is the right place for a jump first, then walking later.",
         targetSelector: "#blockly-region",
         demoBlocklyXml: JUMP_IF_READY_DEMO_XML,
@@ -1494,7 +1493,7 @@ const LEVEL_DEFINITIONS = [
       {
         id: "level-19-territory",
         title: "The Field Has Sides",
-        body: "Your side and the enemy side are different spaces. Blockly can check which half of the field the ally is in.",
+        body: "Your side and the enemy side are different spaces. Your program can check which half of the field the ally is in.",
         targetSelector: "#canvas-container"
       },
       {
@@ -1608,7 +1607,7 @@ const LEVEL_DEFINITIONS = [
     id: "how-far-away",
     title: "Level 22: How Far Away?",
     description: "Use a number comparison with distance to closest enemy.",
-    introText: "Distance can become a real value in Blockly now. Compare it to a number and choose a different move when the enemy gets close enough.",
+    introText: "Distance can become a real value in your program now. Compare it to a number and choose a different move when the enemy gets close enough.",
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,
@@ -1792,7 +1791,7 @@ const LEVEL_DEFINITIONS = [
     id: "first-two-defend",
     title: "Level 29: First Two Defend",
     description: "Teach range checks on runner index so two allies take one job and the third takes another.",
-    introText: "Now the team has three Blockly-controlled allies. Index < 2 is a clean way to group the first two together.",
+    introText: "Now the team has three program-controlled allies. Index < 2 is a clean way to group the first two together.",
     mode: GAME_MODES.PLAYER_VS_NPC,
     mapKey: "simpleAisle",
     humanTurnBehavior: HUMAN_TURN_BEHAVIORS.AUTO_SKIP,

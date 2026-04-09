@@ -1,6 +1,6 @@
 import { CELL_TYPE, MAPS, DEFAULT_MAP_KEY, FREE_PLAY_MAP_OPTIONS } from "./maps.js";
 import { GAME_MODES, DEFAULT_GAME_MODE, FREE_PLAY_MODES, DEFAULT_FREE_PLAY_MODE } from "./gameModes.js";
-import { P1_KEY_ALIASES, P1_KEY_BINDINGS, P2_KEY_BINDINGS } from "./keybindings.js";
+import { P1_KEY_BINDINGS, P2_KEY_BINDINGS } from "./keybindings.js";
 
 export const COLS = 12;
 export const ROWS = 8;
@@ -258,7 +258,6 @@ export {
   DEFAULT_GAME_MODE,
   FREE_PLAY_MODES,
   DEFAULT_FREE_PLAY_MODE,
-  P1_KEY_ALIASES,
   P1_KEY_BINDINGS,
   P2_KEY_BINDINGS
 };

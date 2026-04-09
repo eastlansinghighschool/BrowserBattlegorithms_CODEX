@@ -1,6 +1,12 @@
-import * as Blockly from "blockly";
-
 const STORAGE_KEY = "bba_tutorial_seen_v1";
+let tutorialBlocklyModulePromise = null;
+
+function getTutorialBlocklyModule() {
+  if (!tutorialBlocklyModulePromise) {
+    tutorialBlocklyModulePromise = import("blockly");
+  }
+  return tutorialBlocklyModulePromise;
+}
 
 function getStoredTutorialSeen() {
   try {
@@ -55,14 +61,24 @@ function disposeTutorialDemoWorkspace(app) {
   }
 }
 
-function renderTutorialDemoWorkspace(app, step) {
+async function renderTutorialDemoWorkspace(app, step) {
   const demoContainer = document.getElementById("tutorial-demo-blockly");
   if (!demoContainer || !step?.demoBlocklyXml) {
     disposeTutorialDemoWorkspace(app);
     return;
   }
 
+  const renderToken = `${step.title}:${step.targetSelector || ""}:${step.demoBlocklyXml.length}`;
+  app.ui.activeTutorialDemoToken = renderToken;
   disposeTutorialDemoWorkspace(app);
+  demoContainer.innerHTML = '<div class="tutorial-demo-loading">Loading example...</div>';
+
+  const Blockly = await getTutorialBlocklyModule();
+  if (app.ui.activeTutorialDemoToken !== renderToken) {
+    return;
+  }
+
+  demoContainer.innerHTML = "";
   app.tutorialDemoWorkspace = Blockly.inject(demoContainer, {
     readOnly: true,
     scrollbars: true,
@@ -107,6 +123,7 @@ export function initializeTutorialState(app) {
   app.state.tutorialSeen = getStoredTutorialSeen();
   app.state.activeTutorial = null;
   app.state.spotlightRect = null;
+  app.ui.modeChooserEmojiFrame = false;
 }
 
 export function maybeStartLevelTutorial(app, level) {
@@ -193,6 +210,16 @@ export function bindTutorialOverlay(app) {
     return;
   }
 
+  if (!app.ui.modeChooserEmojiInterval && typeof window !== "undefined") {
+    app.ui.modeChooserEmojiInterval = window.setInterval(() => {
+      if (!app.state.showModePicker) {
+        return;
+      }
+      app.ui.modeChooserEmojiFrame = !app.ui.modeChooserEmojiFrame;
+      renderTutorialOverlay(app);
+    }, 1000);
+  }
+
   overlay.addEventListener("click", (event) => {
     const action = event.target.closest("[data-tutorial-action]")?.dataset.tutorialAction;
     if (!action) {
@@ -231,12 +258,20 @@ export function renderTutorialOverlay(app) {
   if (app.state.showModePicker) {
     disposeTutorialDemoWorkspace(app);
     overlay.classList.add("tutorial-overlay-active");
+    const allyEmoji = app.ui.modeChooserEmojiFrame ? "🧎🏾‍♂️" : "🏃🏽‍♂️";
+    const enemyEmoji = app.ui.modeChooserEmojiFrame ? "🧎🏼" : "🏃🏼";
     overlay.innerHTML = `
       <div class="tutorial-scrim"></div>
       <div class="tutorial-card tutorial-card-centered">
-        <p class="tutorial-step-count">Choose a starting mode</p>
-        <h3>How do you want to begin?</h3>
-        <p>Guided Levels teaches one concept at a time. Free Play drops you straight into the sandbox with the full current toolset.</p>
+        <p class="tutorial-step-count">Welcome</p>
+        <p>Welcome to Battlegorithms, an Hour of Code experience where you learn to program teammates in a game of capture the flag.</p>
+        <div class="tutorial-mode-chooser-strip" aria-hidden="true">
+          <span class="tutorial-mode-emoji tutorial-mode-emoji-runner">${allyEmoji}</span>
+          <span class="tutorial-mode-emoji tutorial-mode-emoji-runner">${enemyEmoji}</span>
+          <span class="tutorial-mode-emoji">🚩</span>
+          <span class="tutorial-mode-emoji">🚧</span>
+        </div>
+        <p class="tutorial-mode-chooser-note">Choose Guided Levels if you are still learning, or test your skills in Free Play.</p>
         <div class="tutorial-actions tutorial-actions-stacked">
           <button data-tutorial-action="choose-guided">Guided Levels</button>
           <button data-tutorial-action="choose-free-play">Free Play</button>
